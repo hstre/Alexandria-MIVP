@@ -10,7 +10,6 @@ from .alexandria_v2 import (
 )
 
 from .mivp_impl import (
-    AgentIdentity,
     model_hash, policy_hash, canonicalize_policy,
     runtime_hash, canonicalize_runtime, composite_instance_hash,
     leaf_hash, node_hash, merkle_root,
@@ -19,7 +18,9 @@ from .mivp_impl import (
 )
 
 from .alexandria_mivp import (
-    AlexandriaMIVPStore
+    AgentIdentity,
+    AlexandriaMIVPStore,
+    verify_cih_internal_consistency
 )
 
 __version__ = "0.1.0"
@@ -38,4 +39,5 @@ __all__ = [
     
     # Integration
     "AlexandriaMIVPStore",
+    "verify_cih_internal_consistency",
 ]
