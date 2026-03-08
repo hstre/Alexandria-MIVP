@@ -1,0 +1,2 @@
+# Alexandria + MIVP has no external dependencies
+# Pure Python 3.8+ implementation
