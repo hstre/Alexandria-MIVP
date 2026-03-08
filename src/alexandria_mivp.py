@@ -23,50 +23,64 @@ from mivp_impl import (
 @dataclass
 class AgentIdentity:
     """MIVP identity for an epistemic agent."""
-    name: str
-    model_path: str
-    model_bytes: bytes
-    model_chunk_size: int = 4 * 1024 * 1024  # 4 MB default
     
-    # Policy configuration
-    system_prompt: str = ""
-    guardrails: list = None
-    moderation_policy_version: str = "1.0"
-    policy_spec_version: str = "1.0"
-    attestation_completeness: str = "full"
-    
-    # Runtime configuration
-    temperature: float = 0.7
-    top_p: float = 0.9
-    max_tokens: int = 4000
-    tooling_enabled: bool = True
-    routing_mode: str = "direct"
-    runtime_spec_version: str = "1.0"
-    
-    # Computed hashes (cached)
-    _mh: Optional[bytes] = None
-    _ph: Optional[bytes] = None
-    _rh: Optional[bytes] = None
-    _cih: Optional[bytes] = None
-    
-    def __post_init__(self):
-        if self.guardrails is None:
-            self.guardrails = []
+    def __init__(self,
+                 name: str,
+                 model_path: str,
+                 model_bytes: bytes,
+                 model_chunk_size: int = 4 * 1024 * 1024,  # 4 MB default
+                 # Policy configuration
+                 system_prompt: str = "",
+                 guardrails: list = None,
+                 moderation_policy_version: str = "1.0",
+                 policy_spec_version: str = "1.0",
+                 attestation_completeness: str = "full",
+                 # Runtime configuration
+                 temperature: float = 0.7,
+                 top_p: float = 0.9,
+                 max_tokens: int = 4000,
+                 tooling_enabled: bool = True,
+                 routing_mode: str = "direct",
+                 runtime_spec_version: str = "1.0"):
+        
+        self.name = name
+        self.model_path = model_path
+        self.model_bytes = model_bytes
+        self.model_chunk_size = model_chunk_size
+        
+        self.system_prompt = system_prompt
+        self.guardrails = guardrails if guardrails is not None else []
+        self.moderation_policy_version = moderation_policy_version
+        self.policy_spec_version = policy_spec_version
+        self.attestation_completeness = attestation_completeness
+        
+        self.temperature = temperature
+        self.top_p = top_p
+        self.max_tokens = max_tokens
+        self.tooling_enabled = tooling_enabled
+        self.routing_mode = routing_mode
+        self.runtime_spec_version = runtime_spec_version
+        
+        # Computed hashes (cached, private)
+        self.__mh = None
+        self.__ph = None
+        self.__rh = None
+        self.__cih = None
     
     def compute_mh(self) -> bytes:
         """Compute Model Hash."""
-        if self._mh is None:
+        if self.__mh is None:
             mh, _, _ = model_hash(
                 self.model_path, 
                 self.model_bytes, 
                 self.model_chunk_size
             )
-            self._mh = mh
-        return self._mh
+            self.__mh = mh
+        return self.__mh
     
     def compute_ph(self) -> bytes:
         """Compute Policy Hash."""
-        if self._ph is None:
+        if self.__ph is None:
             canonical = canonicalize_policy(
                 system_prompt=self.system_prompt,
                 guardrails=self.guardrails,
@@ -74,12 +88,12 @@ class AgentIdentity:
                 policy_spec_version=self.policy_spec_version,
                 attestation_completeness=self.attestation_completeness,
             )
-            self._ph = policy_hash(canonical)
-        return self._ph
+            self.__ph = policy_hash(canonical)
+        return self.__ph
     
     def compute_rh(self) -> bytes:
         """Compute Runtime Hash."""
-        if self._rh is None:
+        if self.__rh is None:
             canonical = canonicalize_runtime(
                 temperature=self.temperature,
                 top_p=self.top_p,
@@ -88,8 +102,8 @@ class AgentIdentity:
                 routing_mode=self.routing_mode,
                 runtime_spec_version=self.runtime_spec_version,
             )
-            self._rh = runtime_hash(canonical)
-        return self._rh
+            self.__rh = runtime_hash(canonical)
+        return self.__rh
     
     def compute_cih(self, instance_epoch: Optional[int] = None) -> bytes:
         """Compute Composite Instance Hash."""
@@ -102,19 +116,56 @@ class AgentIdentity:
         else:
             cih = composite_instance_hash(mh, ph, rh)
         
-        self._cih = cih
+        self.__cih = cih
         return cih
     
-    def get_identity_dict(self) -> Dict[str, Any]:
+    def get_identity_dict(self, instance_epoch: Optional[int] = None) -> Dict[str, Any]:
         """Get full identity information for inclusion in patches."""
         return {
             "agent_name": self.name,
             "mh": self.compute_mh().hex(),
             "ph": self.compute_ph().hex(),
             "rh": self.compute_rh().hex(),
-            "cih": self.compute_cih().hex(),
+            "cih": self.compute_cih(instance_epoch).hex(),
+            **({"instance_epoch": instance_epoch} if instance_epoch is not None else {}),
             "timestamp": int(time.time()),
         }
+    
+    def matches_identity_dict(self, identity: Dict[str, Any]) -> bool:
+        """
+        Check if an identity dict matches THIS agent.
+        Strong verification: checks if MH/PH/RH match agent's computed hashes.
+        """
+        try:
+            return (
+                bytes.fromhex(identity["mh"]) == self.compute_mh() and
+                bytes.fromhex(identity["ph"]) == self.compute_ph() and
+                bytes.fromhex(identity["rh"]) == self.compute_rh()
+            )
+        except (KeyError, ValueError):
+            return False
+
+# ----------------------------- Standalone CIH consistency check -----------------------------
+
+def verify_cih_internal_consistency(identity: Dict[str, Any]) -> bool:
+    """
+    Verify internal consistency of an identity dict.
+    Checks if CIH matches SHA256(MH || PH || RH [|| epoch]).
+    This is weak verification - only checks internal consistency,
+    not whether the identity matches a known agent.
+    Useful for third parties without knowledge of the agent.
+    """
+    try:
+        claimed_cih = bytes.fromhex(identity["cih"])
+        claimed_mh = bytes.fromhex(identity["mh"])
+        claimed_ph = bytes.fromhex(identity["ph"])
+        claimed_rh = bytes.fromhex(identity["rh"])
+        instance_epoch = identity.get("instance_epoch")
+        
+        recomputed = composite_instance_hash(claimed_mh, claimed_ph, claimed_rh, instance_epoch)
+        return recomputed == claimed_cih
+    except (KeyError, ValueError):
+        return False
 
 # ----------------------------- MIVP-enhanced Alexandria Store -----------------------------
 
@@ -134,10 +185,7 @@ class AlexandriaMIVPStore(AlexandriaStore):
         Adds author identity to audit field.
         """
         # Add identity to audit metadata
-        identity_info = self.agent_identity.get_identity_dict()
-        if instance_epoch is not None:
-            identity_info["cih"] = self.agent_identity.compute_cih(instance_epoch).hex()
-            identity_info["instance_epoch"] = instance_epoch
+        identity_info = self.agent_identity.get_identity_dict(instance_epoch)
         
         # Merge with existing audit data
         new_audit = patch.audit.copy()
@@ -153,49 +201,93 @@ class AlexandriaMIVPStore(AlexandriaStore):
         # Submit as normal
         return super().submit(updated_patch)
     
-    def verify_patch_identity(self, patch: Patch) -> bool:
+    def verify_patch_identity_internal(self, patch: Patch) -> bool:
         """
-        Verify that the patch's claimed identity matches computed identity.
-        Returns True if identity is valid and matches.
+        Verify internal consistency of a patch's identity claims.
+        Only checks if CIH matches MH/PH/RH, not if they match a known agent.
+        Useful for third parties without knowledge of the agent.
         """
         if "mivp_identity" not in patch.audit:
             return False  # No identity attached
         
         identity = patch.audit["mivp_identity"]
-        
-        # Verify CIH matches claimed components
-        try:
-            claimed_cih = bytes.fromhex(identity["cih"])
-            claimed_mh = bytes.fromhex(identity["mh"])
-            claimed_ph = bytes.fromhex(identity["ph"])
-            claimed_rh = bytes.fromhex(identity["rh"])
-            
-            # Recompute CIH from claimed components
-            instance_epoch = identity.get("instance_epoch")
-            if instance_epoch is not None:
-                recomputed_cih = composite_instance_hash(
-                    claimed_mh, claimed_ph, claimed_rh, instance_epoch
-                )
-            else:
-                recomputed_cih = composite_instance_hash(claimed_mh, claimed_ph, claimed_rh)
-            
-            return recomputed_cih == claimed_cih
-        except (KeyError, ValueError):
-            return False
+        return verify_cih_internal_consistency(identity)
     
-    def reconstruct_with_identity_verification(self, branch_id: str) -> Dict[str, Node]:
+    def verify_patch_identity_against_agent(self, patch: Patch) -> bool:
         """
-        Reconstruct graph while verifying all patch identities.
-        Raises AuditError if any identity verification fails.
+        Verify that patch identity matches THIS specific agent.
+        Strong verification: checks if MH/PH/RH match agent's computed hashes.
+        """
+        if "mivp_identity" not in patch.audit:
+            return False  # No identity attached
+        
+        identity = patch.audit["mivp_identity"]
+        return self.agent_identity.matches_identity_dict(identity)
+    
+    def verify_patch_identity(self, patch: Patch) -> bool:
+        """
+        Compatibility wrapper: verifies against this agent (strong verification).
+        """
+        return self.verify_patch_identity_against_agent(patch)
+    
+    def reconstruct_with_identity_verification(self, branch_id: str, strict: bool = False) -> Dict[str, Any]:
+        """
+        Reconstruct graph with detailed identity verification report.
+        Returns dict with nodes and verification status.
+        
+        If strict=True, raises AuditError on any verification failure.
+        If strict=False, returns structured report with verification status.
         """
         nodes = super().reconstruct(branch_id)
         
-        # Verify identities of all patches in branch
-        for patch in self.branches[branch_id]:
-            if not self.verify_patch_identity(patch):
-                raise AuditError(f"Identity verification failed for patch {patch.patch_id}")
+        verification_report = {
+            "branch": branch_id,
+            "total_patches": len(self.branches[branch_id]),
+            "verified": 0,
+            "consistent": 0,
+            "unverified": 0,
+            "tampered": 0,
+            "patches": []
+        }
         
-        return nodes
+        for patch in self.branches[branch_id]:
+            patch_report = {
+                "patch_id": patch.patch_id,
+                "has_identity": "mivp_identity" in patch.audit
+            }
+            
+            if "mivp_identity" in patch.audit:
+                # Check internal consistency
+                internal_ok = self.verify_patch_identity_internal(patch)
+                # Check against this agent
+                agent_ok = self.verify_patch_identity_against_agent(patch)
+                
+                patch_report["internal_consistent"] = internal_ok
+                patch_report["agent_verified"] = agent_ok
+                
+                if agent_ok:
+                    verification_report["verified"] += 1
+                elif internal_ok:
+                    verification_report["consistent"] += 1
+                else:
+                    verification_report["tampered"] += 1
+                    
+                if strict and not agent_ok:
+                    raise AuditError(f"Identity verification failed for patch {patch.patch_id}")
+            else:
+                patch_report["internal_consistent"] = False
+                patch_report["agent_verified"] = False
+                verification_report["unverified"] += 1
+                
+                if strict:
+                    raise AuditError(f"No identity attached to patch {patch.patch_id}")
+            
+            verification_report["patches"].append(patch_report)
+        
+        return {
+            "nodes": nodes,
+            "verification": verification_report
+        }
 
 # ----------------------------- Demo -----------------------------
 
@@ -277,9 +369,16 @@ def demo_integration():
     # Demonstrate reconstruction with identity verification
     print("Reconstructing with identity verification...")
     try:
-        nodes = store.reconstruct_with_identity_verification("main")
+        result = store.reconstruct_with_identity_verification("main", strict=False)
+        nodes = result["nodes"]
+        verification = result["verification"]
+        
         print(f"Reconstruction successful. Nodes: {list(nodes.keys())}")
-        print("All patch identities verified.")
+        print(f"Verification report:")
+        print(f"  Verified: {verification['verified']} patches")
+        print(f"  Consistent (internal): {verification['consistent']} patches")
+        print(f"  Unverified (no identity): {verification['unverified']} patches")
+        print(f"  Tampered (inconsistent): {verification['tampered']} patches")
     except AuditError as e:
         print(f"Reconstruction failed: {e}")
     

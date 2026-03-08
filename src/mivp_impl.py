@@ -143,20 +143,53 @@ def cfs1_float(x: float) -> str:
     """
     CFS-1: shortest round-trip-safe decimal, no trailing zeros,
     no scientific notation in range [1e-4, 1e4), normalize -0.0 to 0.
-    Covers test vector cases.
+    Robust implementation using Decimal for exact representation.
     """
     if x == 0.0:
         return "0"
-    # Use Python's repr which is round-trip safe, then strip trailing zeros
-    s = f"{x:.10g}"
-    # Ensure no scientific notation for values in range
+    
     abs_x = abs(x)
     if 1e-4 <= abs_x < 1e4:
-        # Format as plain decimal
-        s = f"{x:f}".rstrip("0").rstrip(".")
-        if "." not in s and abs_x >= 1:
-            pass  # integer-valued float, no decimal needed
-    return s
+        # Fixed-point notation within range, ensure no scientific notation
+        # Use Decimal for exact round-trip representation
+        from decimal import Decimal
+        d = Decimal(repr(x))
+        # Format as fixed-point without exponent
+        s = format(d, 'f')
+        # Remove trailing zeros after decimal point
+        if '.' in s:
+            s = s.rstrip('0').rstrip('.')
+        return s
+    else:
+        # Outside range: use Python's repr which is round-trip safe
+        # and uses scientific notation when appropriate (shortest)
+        s = repr(x)
+        # repr may produce "-0.0" for negative zero
+        if s == "-0.0":
+            return "0"
+        return s
+
+class CFS1JSONEncoder(json.JSONEncoder):
+    """JSON encoder that serializes floats using CFS-1 format."""
+    def default(self, obj):
+        # Only called for objects that aren't natively serializable
+        # Floats are natively serializable, so we need to override encode instead
+        return super().default(obj)
+    
+    def encode(self, obj):
+        # Recursively process the object to convert floats
+        def process(item):
+            if isinstance(item, float):
+                return cfs1_float(item)
+            elif isinstance(item, dict):
+                return {k: process(v) for k, v in item.items()}
+            elif isinstance(item, list):
+                return [process(v) for v in item]
+            else:
+                return item
+        
+        processed = process(obj)
+        return super().encode(processed)
 
 def canonicalize_runtime(
     temperature: float,
@@ -177,8 +210,9 @@ def canonicalize_runtime(
         "tooling_enabled": tooling_enabled,
         "top_p": top_p,
     }
-    # Serialize with CFS-1 for floats
-    raw = json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    # Serialize with CFS-1 for floats using custom encoder
+    raw = json.dumps(obj, sort_keys=True, separators=(",", ":"), 
+                     ensure_ascii=False, cls=CFS1JSONEncoder)
     return raw
 
 def runtime_hash(canonical_runtime_json: str) -> bytes:
