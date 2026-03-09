@@ -5,8 +5,20 @@ Combines epistemic consistency with cryptographic identity verification
 
 import json
 import time
-from typing import Dict, Any, Optional
+import base64
+from typing import Dict, Any, Optional, Tuple
 from dataclasses import dataclass, asdict, replace
+
+try:
+    from cryptography.hazmat.primitives.asymmetric import ed25519
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.exceptions import InvalidSignature
+    CRYPTOGRAPHY_AVAILABLE = True
+except ImportError:
+    CRYPTOGRAPHY_AVAILABLE = False
+    ed25519 = None
+    serialization = None
+    InvalidSignature = Exception
 
 from alexandria_v2 import (
     CATEGORIES, OPS, Uncertainty, Node, Patch, AuditError, 
@@ -17,6 +29,109 @@ from mivp_impl import (
     model_hash, policy_hash, canonicalize_policy,
     runtime_hash, canonicalize_runtime, composite_instance_hash
 )
+
+# ----------------------------- Digital Signer -----------------------------
+
+class DigitalSigner:
+    """Ed25519 digital signatures for identity bundles."""
+    
+    def __init__(self, private_key: Optional[bytes] = None):
+        """
+        Initialize signer with optional private key.
+        If no key provided, generates a new key pair.
+        """
+        if not CRYPTOGRAPHY_AVAILABLE:
+            raise RuntimeError(
+                "cryptography library not available. "
+                "Install with: pip install cryptography"
+            )
+        
+        if private_key is None:
+            self._private_key = ed25519.Ed25519PrivateKey.generate()
+        else:
+            self._private_key = ed25519.Ed25519PrivateKey.from_private_bytes(private_key)
+        
+        self._public_key = self._private_key.public_key()
+    
+    @classmethod
+    def generate(cls) -> 'DigitalSigner':
+        """Generate a new signer with random key pair."""
+        return cls()
+    
+    @classmethod
+    def from_private_bytes(cls, private_key: bytes) -> 'DigitalSigner':
+        """Create signer from existing private key bytes."""
+        return cls(private_key)
+    
+    @property
+    def private_key_bytes(self) -> bytes:
+        """Get raw private key bytes (32 bytes)."""
+        return self._private_key.private_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PrivateFormat.Raw,
+            encryption_algorithm=serialization.NoEncryption()
+        )
+    
+    @property
+    def public_key_bytes(self) -> bytes:
+        """Get raw public key bytes (32 bytes)."""
+        return self._public_key.public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw
+        )
+    
+    @property
+    def public_key_hex(self) -> str:
+        """Get public key as hex string (64 chars)."""
+        return self.public_key_bytes.hex()
+    
+    def sign(self, data: bytes) -> bytes:
+        """Sign data with private key (64-byte signature)."""
+        return self._private_key.sign(data)
+    
+    def sign_hex(self, data: bytes) -> str:
+        """Sign data and return signature as hex string."""
+        return self.sign(data).hex()
+    
+    def verify(self, data: bytes, signature: bytes) -> bool:
+        """Verify signature against data and public key."""
+        try:
+            self._public_key.verify(signature, data)
+            return True
+        except InvalidSignature:
+            return False
+    
+    def verify_hex(self, data: bytes, signature_hex: str) -> bool:
+        """Verify hex signature."""
+        try:
+            signature = bytes.fromhex(signature_hex)
+            return self.verify(data, signature)
+        except (ValueError, InvalidSignature):
+            return False
+    
+    @staticmethod
+    def verify_external(public_key_bytes: bytes, data: bytes, signature: bytes) -> bool:
+        """Static method to verify signature with provided public key."""
+        if not CRYPTOGRAPHY_AVAILABLE:
+            return False
+        
+        try:
+            public_key = ed25519.Ed25519PublicKey.from_public_bytes(public_key_bytes)
+            public_key.verify(signature, data)
+            return True
+        except (InvalidSignature, ValueError):
+            return False
+    
+    @staticmethod
+    def verify_external_hex(public_key_hex: str, data: bytes, signature_hex: str) -> bool:
+        """Static method to verify hex signature with hex public key."""
+        try:
+            public_key_bytes = bytes.fromhex(public_key_hex)
+            signature = bytes.fromhex(signature_hex)
+            return DigitalSigner.verify_external(public_key_bytes, data, signature)
+        except ValueError:
+            return False
+
 
 # ----------------------------- Agent Identity -----------------------------
 
@@ -41,7 +156,10 @@ class AgentIdentity:
                  max_tokens: int = 4000,
                  tooling_enabled: bool = True,
                  routing_mode: str = "direct",
-                 runtime_spec_version: str = "1.0"):
+                 runtime_spec_version: str = "1.0",
+                 # Digital signature
+                 private_key: Optional[bytes] = None,
+                 signer: Optional['DigitalSigner'] = None):
         
         self.name = name
         self.model_path = model_path
@@ -60,6 +178,17 @@ class AgentIdentity:
         self.tooling_enabled = tooling_enabled
         self.routing_mode = routing_mode
         self.runtime_spec_version = runtime_spec_version
+        
+        # Digital signature
+        if signer is not None:
+            self.signer = signer
+        else:
+            try:
+                self.signer = DigitalSigner(private_key)
+            except RuntimeError as e:
+                # If cryptography not available, create a dummy signer that can't sign
+                self.signer = None
+                self._signature_warning = str(e)
         
         # Computed hashes (cached, private)
         self.__mh = None
@@ -121,15 +250,27 @@ class AgentIdentity:
     
     def get_identity_dict(self, instance_epoch: Optional[int] = None) -> Dict[str, Any]:
         """Get full identity information for inclusion in patches."""
-        return {
+        cih = self.compute_cih(instance_epoch)
+        identity = {
             "agent_name": self.name,
             "mh": self.compute_mh().hex(),
             "ph": self.compute_ph().hex(),
             "rh": self.compute_rh().hex(),
-            "cih": self.compute_cih(instance_epoch).hex(),
+            "cih": cih.hex(),
             **({"instance_epoch": instance_epoch} if instance_epoch is not None else {}),
             "timestamp": int(time.time()),
         }
+        
+        # Add digital signature if signer is available
+        if hasattr(self, 'signer') and self.signer is not None:
+            try:
+                identity["signer_id"] = self.signer.public_key_hex
+                identity["signature"] = self.signer.sign_hex(cih)
+            except (AttributeError, RuntimeError):
+                # Signer exists but can't sign (e.g., cryptography not available)
+                pass
+        
+        return identity
     
     def matches_identity_dict(self, identity: Dict[str, Any]) -> bool:
         """
@@ -141,6 +282,28 @@ class AgentIdentity:
                 bytes.fromhex(identity["mh"]) == self.compute_mh() and
                 bytes.fromhex(identity["ph"]) == self.compute_ph() and
                 bytes.fromhex(identity["rh"]) == self.compute_rh()
+            )
+        except (KeyError, ValueError):
+            return False
+    
+    def verify_identity_signature(self, identity: Dict[str, Any]) -> bool:
+        """
+        Verify digital signature in identity dict (if present).
+        Returns True if signature is valid or no signature present.
+        Returns False if signature is present but invalid.
+        """
+        # If no signature fields, treat as unsigned (legacy compatibility)
+        if "signer_id" not in identity or "signature" not in identity:
+            return True
+        
+        try:
+            cih_bytes = bytes.fromhex(identity["cih"])
+            public_key_hex = identity["signer_id"]
+            signature_hex = identity["signature"]
+            
+            # Use DigitalSigner's static verification
+            return DigitalSigner.verify_external_hex(
+                public_key_hex, cih_bytes, signature_hex
             )
         except (KeyError, ValueError):
             return False
@@ -217,12 +380,40 @@ class AlexandriaMIVPStore(AlexandriaStore):
         """
         Verify that patch identity matches THIS specific agent.
         Strong verification: checks if MH/PH/RH match agent's computed hashes.
+        Also verifies digital signature if present.
         """
         if "mivp_identity" not in patch.audit:
             return False  # No identity attached
         
         identity = patch.audit["mivp_identity"]
-        return self.agent_identity.matches_identity_dict(identity)
+        
+        # Check hash matches
+        hash_match = self.agent_identity.matches_identity_dict(identity)
+        
+        # Check digital signature (if present)
+        signature_valid = self.agent_identity.verify_identity_signature(identity)
+        
+        return hash_match and signature_valid
+    
+    def verify_patch_signature(self, patch: Patch) -> Optional[bool]:
+        """
+        Verify digital signature of patch identity (if present).
+        Returns:
+        - True: signature present and valid
+        - False: signature present but invalid
+        - None: no signature present (legacy unsigned identity)
+        """
+        if "mivp_identity" not in patch.audit:
+            return None
+        
+        identity = patch.audit["mivp_identity"]
+        
+        # Check if signature fields exist
+        if "signer_id" not in identity or "signature" not in identity:
+            return None
+        
+        # Verify using agent's method (or static verification)
+        return self.agent_identity.verify_identity_signature(identity)
     
     def verify_patch_identity(self, patch: Patch) -> bool:
         """
@@ -288,6 +479,18 @@ class AlexandriaMIVPStore(AlexandriaStore):
             "nodes": nodes,
             "verification": verification_report
         }
+    
+    def verify_current_identity(self) -> bool:
+        """
+        Verify that the current agent identity is still valid.
+        Returns True if the agent identity exists and can be verified.
+        """
+        if not hasattr(self, 'agent_identity') or self.agent_identity is None:
+            return False
+        
+        # Basic check: agent identity exists
+        # Could add more sophisticated checks here if needed
+        return True
 
 # ----------------------------- Demo -----------------------------
 

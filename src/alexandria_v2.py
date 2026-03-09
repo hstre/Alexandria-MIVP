@@ -332,6 +332,25 @@ class AlexandriaStore:
                 "lineage_len": len(n.lineage),
             })
         return report
+    
+    def get_last_patch_id(self, branch_id: Optional[str] = None) -> Optional[str]:
+        """
+        Get the patch ID of the most recent patch in the specified branch.
+        If branch_id is None, uses current branch.
+        Returns None if branch is empty.
+        """
+        if branch_id is None:
+            branch_id = self.current_branch
+        
+        if branch_id not in self.branches:
+            raise KeyError(f"Unknown branch: {branch_id}")
+        
+        patches = self.branches[branch_id]
+        if not patches:
+            return None
+        
+        # Return the last patch's ID
+        return patches[-1].patch_id
 
 # ----------------------------- Demo -----------------------------
 

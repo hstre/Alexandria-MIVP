@@ -169,27 +169,7 @@ def cfs1_float(x: float) -> str:
             return "0"
         return s
 
-class CFS1JSONEncoder(json.JSONEncoder):
-    """JSON encoder that serializes floats using CFS-1 format."""
-    def default(self, obj):
-        # Only called for objects that aren't natively serializable
-        # Floats are natively serializable, so we need to override encode instead
-        return super().default(obj)
-    
-    def encode(self, obj):
-        # Recursively process the object to convert floats
-        def process(item):
-            if isinstance(item, float):
-                return cfs1_float(item)
-            elif isinstance(item, dict):
-                return {k: process(v) for k, v in item.items()}
-            elif isinstance(item, list):
-                return [process(v) for v in item]
-            else:
-                return item
-        
-        processed = process(obj)
-        return super().encode(processed)
+
 
 def canonicalize_runtime(
     temperature: float,
@@ -201,7 +181,9 @@ def canonicalize_runtime(
 ) -> str:
     """
     Build canonical runtime JSON per Appendix D + CFS-1.
+    Manual JSON assembly to ensure CFS-1 floats become JSON numbers, not strings.
     """
+    # Build object with sorted keys
     obj = {
         "max_tokens": max_tokens,
         "routing_mode": routing_mode,
@@ -210,10 +192,22 @@ def canonicalize_runtime(
         "tooling_enabled": tooling_enabled,
         "top_p": top_p,
     }
-    # Serialize with CFS-1 for floats using custom encoder
-    raw = json.dumps(obj, sort_keys=True, separators=(",", ":"), 
-                     ensure_ascii=False, cls=CFS1JSONEncoder)
-    return raw
+    
+    # Manually build JSON string with CFS-1 floats as numbers
+    parts = []
+    for key in sorted(obj.keys()):
+        value = obj[key]
+        if isinstance(value, float):
+            # Use CFS-1 representation directly as JSON number
+            parts.append(f'"{key}":{cfs1_float(value)}')
+        elif isinstance(value, bool):
+            # JSON boolean
+            parts.append(f'"{key}":{str(value).lower()}')
+        else:
+            # Let json.dumps handle other types
+            parts.append(f'"{key}":{json.dumps(value, separators=(",",":"), ensure_ascii=False)}')
+    
+    return "{" + ",".join(parts) + "}"
 
 def runtime_hash(canonical_runtime_json: str) -> bytes:
     """

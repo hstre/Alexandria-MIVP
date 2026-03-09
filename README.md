@@ -1,28 +1,28 @@
 # Alexandria Protocol + MIVP Integration
 
-**Epistemic consistency meets cryptographic identity verification for autonomous agents.**
+**Binding claims to declared, hash-addressed model/policy/runtime profiles with epistemic consistency.**
 
 ## Overview
 
 This project combines two complementary protocols:
 
 1. **Alexandria Protocol** - Epistemic consistency layer for tamper-proof knowledge lineage
-2. **MIVP (Model Identity Verification Protocol)** - Cryptographic attestation standard for AI model identity
+2. **MIVP (Model Identity Verification Protocol)** - Cryptographic binding of claims to declared identity profiles
 
-Together, they provide **end-to-end verifiability**: from the identity of the system that generated a claim, to the structural integrity of the claim itself.
+Together, they provide **structural verifiability**: binding knowledge claims to specific, hash-addressed system profiles while maintaining epistemic consistency of the claim graph.
 
 ## Why This Matters
 
 ### The Problem
 - **Epistemic Drift**: AI agents make claims without structural continuity or auditability
-- **Identity Opaqueness**: You can't verify which model/policy/runtime actually responded
-- **Silent Substitution**: Models can be switched without detection
-- **Unverifiable Lineage**: Claims lack cryptographic provenance
+- **Profile Opaqueness**: Claims aren't bound to specific model/policy/runtime profiles
+- **Silent Substitution**: System profiles can be switched without detection
+- **Unverifiable Lineage**: Claims lack cryptographic binding to their source profiles
 
 ### The Solution
-- **MIVP** verifies *which system* produced a knowledge claim
-- **Alexandria** verifies *the epistemic structure* of the claim itself
-- **Combined**: Fully auditable, identity-verified epistemic claims
+- **MIVP** binds claims to *declared system profiles* (model, policy, runtime configurations)
+- **Alexandria** ensures *epistemic structure* of claims (categories, operations, consistency)
+- **Combined**: Claims are structurally sound and bound to specific, hash-addressed system profiles
 
 ## Architecture
 
@@ -53,6 +53,7 @@ Together, they provide **end-to-end verifiability**: from the identity of the sy
 - **Canonical JSON**: Field-level normalization for deterministic hashing
 - **CFS-1 Floats**: Round-trip-safe decimal serialization
 - **Normative Test Vectors**: Byte-identical compliance required (Appendix G)
+- **Digital Signatures**: Optional cryptographic signatures for origin binding (Ed25519)
 
 ### Integration
 - **Agent Identity**: Each patch includes author's CIH (Composite Instance Hash)
@@ -62,7 +63,7 @@ Together, they provide **end-to-end verifiability**: from the identity of the sy
 ## Installation
 
 ```bash
-git clone https://github.com/yourusername/alexandria-mivp
+git clone https://github.com/hstre/Alexandria-MIVP
 cd alexandria-mivp
 ```
 
@@ -194,6 +195,27 @@ alexandria-mivp/
 └── README.md
 ```
 
+## Security Model
+
+### What This System Guarantees
+- **Tamper detection within known chains**: Any modification to patches or their lineage is detectable
+- **Claim lineage reconstruction**: Complete history of claims can be reconstructed from the patch sequence
+- **Hash-bound identity profiles**: Claims are cryptographically bound to declared model/policy/runtime profiles
+- **Structural consistency**: Epistemic categories and operations follow defined rules (audit gate)
+- **Deterministic verification**: Same inputs always produce same verification results
+
+### What This System Does NOT Guarantee
+- **Authorized identity**: The system doesn't verify who controls the private keys or system profile
+- **Hardware attestation**: No guarantees about execution environment (TPM, TEE, secure enclaves)
+- **Global immutability**: Chains can be regenerated from scratch; external anchoring required for global consistency
+- **Network authenticity**: No protection against network-level attacks (MITM, replay)
+- **Trustworthy origin**: Hash consistency doesn't imply trustworthiness of the source
+
+### Trust Boundaries
+1. **Internal consistency**: Hash chains are internally consistent (tamper detection)
+2. **Profile binding**: Claims are correctly bound to declared profiles
+3. **External trust**: Requires additional mechanisms (signatures, anchors, PKI) for origin trust
+
 ## Development Status
 
 ### ✅ Implemented
@@ -225,6 +247,18 @@ alexandria-mivp/
 - **MIVP compliance**: All changes must maintain byte-identical output for test vectors
 - **Deterministic hashing**: No randomness in identity computation
 - **Immutable patches**: Once submitted, patches cannot be modified
+
+## Glossary
+
+- **CIH (Composite Instance Hash)**: Cryptographic hash combining MH, PH, and RH (and optionally instance_epoch)
+- **MH (Model Hash)**: Merkle root of model weights/parameters
+- **PH (Policy Hash)**: Hash of canonicalized policy configuration (system prompt, guardrails)
+- **RH (Runtime Hash)**: Hash of canonicalized runtime configuration (temperature, top_p, etc.)
+- **Patch Chain**: Sequence of patches forming an append-only, tamper-detectable lineage
+- **Claim State**: Reconstructed knowledge graph from patches
+- **Audit Gate**: Structural validation rules for patches (schema, category purity, temporal monotonicity)
+- **Identity Bundle**: Combined MH/PH/RH/CIH with optional digital signatures
+- **Epistemic Categories**: EMPIRICAL (observations), NORMATIVE (rules), MODEL (assumptions), SPECULATIVE (hypotheses)
 
 ## License
 
