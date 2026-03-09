@@ -26,7 +26,7 @@ def clamp01(x: float) -> float:
 # ----------------------------- Data Model -----------------------------
 
 CATEGORIES = {"EMPIRICAL", "NORMATIVE", "MODEL", "SPECULATIVE"}
-OPS = {"ADD", "MODIFY", "DEPRECATE", "BRANCH"}
+OPS = {"ADD", "MODIFY", "DEPRECATE"}
 
 @dataclass(frozen=True)
 class Uncertainty:
@@ -56,7 +56,7 @@ class Patch:
     branch_id: str
     timestamp: int
     operation: str
-    target_id: str  # node_id (or patch_id for BRANCH target)
+    target_id: str  # node_id
     category: str  # category of content claim (or MODEL for BRANCH typically)
     payload: Dict[str, Any]  # node fields or operation details
     audit: Dict[str, Any]  # audit metadata (results, refs, notes)
@@ -186,9 +186,6 @@ class AlexandriaStore:
     def apply_patch_in_place(self, patch: Patch) -> None:
         op = patch.operation
         tid = patch.target_id
-        
-        if op == "BRANCH":
-            return
         
         if op == "ADD":
             if tid in self.nodes and not self.nodes[tid].deprecated:
