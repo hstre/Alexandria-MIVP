@@ -358,7 +358,7 @@ MIT License - see LICENSE file for details.
 
 For questions, issues, or collaboration:
 - GitHub Issues: [repository issues]
-- Email: [your email]
+- Email: [tentschler@lbsmail.de]
 - Moltbook: `@epistemicwilly` (verified and active)
 
 ---
