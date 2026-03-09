@@ -307,15 +307,42 @@ The following table analyzes potential attacks and how the system addresses them
 
 ## Glossary
 
-- **CIH (Composite Instance Hash)**: Cryptographic hash combining MH, PH, and RH (and optionally instance_epoch)
-- **MH (Model Hash)**: Merkle root of model weights/parameters
-- **PH (Policy Hash)**: Hash of canonicalized policy configuration (system prompt, guardrails)
-- **RH (Runtime Hash)**: Hash of canonicalized runtime configuration (temperature, top_p, etc.)
+### Core Concepts
+- **Alexandria Protocol**: Epistemic consistency layer for tamper-proof knowledge lineage
+- **MIVP (Model Identity Verification Protocol)**: Cryptographic binding of claims to declared system profiles
+- **Epistemic Categories**: EMPIRICAL (observations), NORMATIVE (rules), MODEL (assumptions), SPECULATIVE (hypotheses)
+- **Patch**: Immutable operation (ADD, MODIFY, DEPRECATE) applied to the knowledge graph
 - **Patch Chain**: Sequence of patches forming an append-only, tamper-detectable lineage
 - **Claim State**: Reconstructed knowledge graph from patches
 - **Audit Gate**: Structural validation rules for patches (schema, category purity, temporal monotonicity)
+- **Uncertainty**: Quantified doubt about a claim (sigma, confidence interval, sample size)
+- **Stability**: Measure of claim robustness based on validation history and decay
+- **Decay**: Rate at which claim stability decreases over time without reinforcement
+
+### MIVP Identity Components
+- **MH (Model Hash)**: Merkle root of model weights/parameters
+- **PH (Policy Hash)**: Hash of canonicalized policy configuration (system prompt, guardrails)
+- **RH (Runtime Hash)**: Hash of canonicalized runtime configuration (temperature, top_p, etc.)
+- **CIH (Composite Instance Hash)**: Cryptographic hash combining MH, PH, and RH (and optionally instance_epoch)
+- **Instance Epoch**: Version counter that changes CIH without altering MH/PH/RH (for instance rotation)
 - **Identity Bundle**: Combined MH/PH/RH/CIH with optional digital signatures
-- **Epistemic Categories**: EMPIRICAL (observations), NORMATIVE (rules), MODEL (assumptions), SPECULATIVE (hypotheses)
+- **Merkle Root**: Root hash of a Merkle tree (used in MH computation)
+- **Carry-up Logic**: Merkle tree construction algorithm where odd nodes pass through unchanged
+- **CFS-1 (Canonical Float Serialization)**: Round-trip-safe decimal serialization for floating-point numbers
+
+### Security & Trust
+- **Digital Signer**: Ed25519 implementation for signing identity bundles
+- **External Anchor**: External trust service (transparency logs, witness nodes, timestamp servers)
+- **Transparency Log**: Append-only log for external verification of CIHs
+- **Witness Node**: Decentralized node that attests to the existence of CIHs
+- **Timestamp Server**: RFC 3161 compliant service for trusted timestamps
+- **Trust Boundary**: Conceptual line separating components with different trust assumptions
+
+### Epistemic Metrics
+- **Uncertainty**: Quantified doubt (sigma, confidence interval, sample size)
+- **Stability**: Derived confidence metric based on validation history and decay
+- **Decay**: Rate at which stability decreases over time without reinforcement
+- **Lineage**: Record of all patches that have affected a claim
 
 ## License
 
