@@ -230,6 +230,44 @@ alexandria-mivp/
 - **Network authenticity**: No protection against network-level attacks (MITM, replay)
 - **Trustworthy origin**: Hash consistency doesn't imply trustworthiness of the source
 
+### Threat Model
+
+The following table analyzes potential attacks and how the system addresses them:
+
+| Attack Vector | Description | Protection Provided | Additional Measures Needed |
+|---------------|-------------|---------------------|----------------------------|
+| **Tampering with patches** | Modifying patch content or lineage after submission | ✅ **Detectable**: Hash chain breaks, CIH mismatches | Regular integrity checks |
+| **Silent model substitution** | Switching model weights without detection | ✅ **Detectable**: Different MH changes CIH | Runtime monitoring |
+| **Policy/Runtime drift** | Changing prompt, guardrails, or runtime parameters | ✅ **Detectable**: PH/RH changes alter CIH | Configuration management |
+| **Full chain regeneration** | Creating a new chain from scratch with same claims | ⚠️ **Not prevented**: No global immutability | ✅ **External anchoring** (transparency logs, witnesses) |
+| **Identity spoofing** | Claiming to be a different agent | ⚠️ **Possible without signatures** | ✅ **Digital signatures** (Ed25519) |
+| **Replay attacks** | Reusing old patches in new contexts | ⚠️ **Possible**: Timestamps help but not foolproof | Sequence numbers, nonces, external timestamps |
+| **Network attacks** | MITM, interception, modification in transit | ❌ **No protection** | Transport security (TLS), message signing |
+| **Key compromise** | Private signing key stolen | ❌ **No protection** | Key rotation, hardware security modules |
+| **Hardware attacks** | Tampering with execution environment | ❌ **No protection** | TEE/TPM attestation, secure enclaves |
+
+### Security Considerations for Deployment
+
+1. **For high-trust environments**:
+   - Enable digital signatures for all patches
+   - Use external anchoring (multiple services for redundancy)
+   - Implement key rotation policies
+
+2. **For regulatory compliance**:
+   - Store chains with external timestamping (RFC 3161)
+   - Maintain witness node networks for cross-verification
+   - Enable full audit trails with cryptographic proofs
+
+3. **For agent-to-agent trust**:
+   - Exchange public keys out-of-band or via PKI
+   - Verify signatures on received patches
+   - Check external anchors for critical claims
+
+4. **For long-term archival**:
+   - Regular anchoring to multiple external services
+   - Key escrow for signature verification continuity
+   - Chain replication across geographically distributed nodes
+
 ### Trust Boundaries
 1. **Internal consistency**: Hash chains are internally consistent (tamper detection)
 2. **Profile binding**: Claims are correctly bound to declared profiles
