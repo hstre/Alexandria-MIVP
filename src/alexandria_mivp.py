@@ -6,7 +6,7 @@ Combines epistemic consistency with cryptographic identity verification
 import json
 import time
 import base64
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 from dataclasses import dataclass, asdict, replace
 
 try:
@@ -131,6 +131,149 @@ class DigitalSigner:
             return DigitalSigner.verify_external(public_key_bytes, data, signature)
         except ValueError:
             return False
+
+
+# ----------------------------- External Trust Anchor -----------------------------
+
+class ExternalAnchor:
+    """
+    External trust anchoring for CIHs to prevent full chain regeneration attacks.
+    
+    Simulates various anchoring services:
+    - Transparency Logs (append-only logs)
+    - Witness Nodes (decentralized verification)
+    - Timestamp Servers (RFC 3161)
+    - Blockchain anchoring (optional)
+    
+    In production, replace with real external services.
+    """
+    
+    def __init__(self):
+        """Initialize with simulated storage."""
+        self.anchors = {}  # proof_id -> {"cih", "timestamp", "proof_type", "data"}
+        self.next_proof_id = 1
+    
+    def anchor(self, cih_hex: str, proof_type: str = "transparency_log") -> Dict[str, Any]:
+        """
+        Anchor a CIH to an external service.
+        
+        Args:
+            cih_hex: Hex string of CIH to anchor
+            proof_type: Type of anchoring service
+                - "transparency_log": Append-only log (e.g., Certificate Transparency)
+                - "witness_node": Decentralized witness network
+                - "timestamp_server": RFC 3161 timestamp
+                - "blockchain": Blockchain transaction (simulated)
+        
+        Returns:
+            Dict with proof information including proof_id and verification URL
+        """
+        proof_id = f"proof_{self.next_proof_id:06d}"
+        self.next_proof_id += 1
+        
+        timestamp = int(time.time())
+        
+        # Simulate different proof types
+        if proof_type == "transparency_log":
+            proof_data = {
+                "log_id": "transparency-log-simulated-001",
+                "tree_size": self.next_proof_id * 100,
+                "leaf_index": self.next_proof_id,
+                "audit_path": ["simulated_merkle_path"],
+            }
+            verification_url = f"https://transparency-log.example.com/entry/{proof_id}"
+        elif proof_type == "witness_node":
+            proof_data = {
+                "witness_count": 3,
+                "witness_ids": ["witness_01", "witness_02", "witness_03"],
+                "signatures": ["sig1", "sig2", "sig3"],
+            }
+            verification_url = f"https://witness-network.example.com/proof/{proof_id}"
+        elif proof_type == "timestamp_server":
+            proof_data = {
+                "tsa_id": "simulated-tsa-001",
+                "tsa_cert": "simulated-cert",
+                "timestamp_token": f"simulated_token_{timestamp}",
+            }
+            verification_url = f"https://timestamp.example.com/verify/{proof_id}"
+        elif proof_type == "blockchain":
+            proof_data = {
+                "chain": "simulated_chain",
+                "tx_hash": f"simulated_tx_{cih_hex[:16]}",
+                "block_height": 1000000 + self.next_proof_id,
+                "confirmations": 6,
+            }
+            verification_url = f"https://blockchain-explorer.example.com/tx/{proof_data['tx_hash']}"
+        else:
+            raise ValueError(f"Unknown proof type: {proof_type}")
+        
+        anchor_record = {
+            "proof_id": proof_id,
+            "cih": cih_hex,
+            "timestamp": timestamp,
+            "proof_type": proof_type,
+            "proof_data": proof_data,
+            "verification_url": verification_url,
+        }
+        
+        self.anchors[proof_id] = anchor_record
+        return anchor_record
+    
+    def verify(self, cih_hex: str, proof_id: str) -> bool:
+        """
+        Verify that a CIH is anchored with given proof ID.
+        
+        Args:
+            cih_hex: Hex string of CIH to verify
+            proof_id: Proof ID returned by anchor()
+        
+        Returns:
+            True if CIH matches proof record
+        """
+        if proof_id not in self.anchors:
+            return False
+        
+        record = self.anchors[proof_id]
+        return record["cih"] == cih_hex
+    
+    def find_proofs(self, cih_hex: str) -> List[Dict[str, Any]]:
+        """
+        Find all proof records for a CIH.
+        
+        Args:
+            cih_hex: Hex string of CIH to find
+        
+        Returns:
+            List of proof records
+        """
+        return [record for record in self.anchors.values() if record["cih"] == cih_hex]
+    
+    def get_global_consistency_proof(self, cih_hex: str) -> Optional[Dict[str, Any]]:
+        """
+        Get a global consistency proof combining multiple anchoring methods.
+        
+        This simulates cross-verification across different trust systems
+        to establish global immutability.
+        """
+        proofs = self.find_proofs(cih_hex)
+        if not proofs:
+            return None
+        
+        # Simulate cross-verification
+        return {
+            "cih": cih_hex,
+            "proof_count": len(proofs),
+            "proof_types": [p["proof_type"] for p in proofs],
+            "earliest_timestamp": min(p["timestamp"] for p in proofs),
+            "latest_timestamp": max(p["timestamp"] for p in proofs),
+            "verification_summary": f"Anchored across {len(proofs)} systems",
+            "proofs": proofs,
+        }
+    
+    @staticmethod
+    def get_supported_proof_types() -> List[str]:
+        """Get list of supported proof types."""
+        return ["transparency_log", "witness_node", "timestamp_server", "blockchain"]
 
 
 # ----------------------------- Agent Identity -----------------------------
@@ -336,11 +479,13 @@ class AlexandriaMIVPStore(AlexandriaStore):
     """
     Alexandria Store with MIVP identity verification.
     Each patch includes the author's cryptographic identity.
+    Optional external anchoring for global consistency.
     """
     
-    def __init__(self, agent_identity: AgentIdentity):
+    def __init__(self, agent_identity: AgentIdentity, external_anchor: Optional[ExternalAnchor] = None):
         super().__init__()
         self.agent_identity = agent_identity
+        self.external_anchor = external_anchor
     
     def submit_with_identity(self, patch: Patch, instance_epoch: Optional[int] = None) -> str:
         """
@@ -363,6 +508,56 @@ class AlexandriaMIVPStore(AlexandriaStore):
         
         # Submit as normal
         return super().submit(updated_patch)
+    
+    def submit_with_identity_and_anchor(self, patch: Patch, instance_epoch: Optional[int] = None, 
+                                        anchor_type: str = "transparency_log") -> Tuple[str, Optional[Dict[str, Any]]]:
+        """
+        Submit a patch with MIVP identity and external anchoring.
+        
+        Args:
+            patch: Patch to submit
+            instance_epoch: Optional instance epoch
+            anchor_type: Type of external anchoring ("transparency_log", "witness_node", 
+                         "timestamp_server", "blockchain")
+        
+        Returns:
+            Tuple of (commit_hash, anchor_proof) where anchor_proof is None if no external anchor configured
+        """
+        # Submit with identity first
+        commit_hash = self.submit_with_identity(patch, instance_epoch)
+        
+        # Get the submitted patch to extract CIH
+        branch_id = patch.branch_id
+        if branch_id not in self.branches or not self.branches[branch_id]:
+            return commit_hash, None
+        
+        submitted_patch = self.branches[branch_id][-1]
+        if "mivp_identity" not in submitted_patch.audit:
+            return commit_hash, None
+        
+        cih_hex = submitted_patch.audit["mivp_identity"]["cih"]
+        
+        # Anchor externally if configured
+        if self.external_anchor is not None:
+            try:
+                anchor_proof = self.external_anchor.anchor(cih_hex, anchor_type)
+                # Store anchor proof in patch audit
+                new_audit = submitted_patch.audit.copy()
+                if "external_anchors" not in new_audit:
+                    new_audit["external_anchors"] = []
+                new_audit["external_anchors"].append(anchor_proof)
+                
+                # Update patch in place (we need to replace in branch list)
+                updated_patch = replace(submitted_patch, audit=new_audit)
+                self.branches[branch_id][-1] = updated_patch
+                
+                return commit_hash, anchor_proof
+            except Exception as e:
+                # Anchoring failed, but patch is still submitted
+                print(f"External anchoring failed: {e}")
+                return commit_hash, None
+        
+        return commit_hash, None
     
     def verify_patch_identity_internal(self, patch: Patch) -> bool:
         """
