@@ -1,0 +1,99 @@
+{
+  "version": "MIVP-v2.1-Appendix-G",
+  "description": "Normative test vectors for Model Identity Verification Protocol v2.1 (Appendix G)",
+  "test_vectors": [
+    {
+      "id": "MH-1",
+      "description": "Model Hash with even leaf count (ABCDEF, chunk_size=4)",
+      "input": {
+        "file_path": "models/model.bin",
+        "file_bytes_hex": "414243444546",
+        "chunk_size": 4
+      },
+      "expected": {
+        "leaf_0_hash": "097c9dd21719c13ebcf1bad1724d0a7ea82393311678b8a74d83377e18aa3e57",
+        "leaf_1_hash": "51f60b4987a50e69b4c8980137fe37251aeef10fe9dbbc43bb7941fc10e4c6d3",
+        "merkle_root": "939bb8b42f752e8bb1fce36beacfd9413ff0b350e862cf5037850f3d8c94d82e",
+        "model_hash": "4f656b70d087942661166d7a311e3f0afde26c4b21729a8004cac46135480900"
+      }
+    },
+    {
+      "id": "MH-2",
+      "description": "Model Hash with odd leaf count / carry-up (ABCDEFGHI, chunk_size=4)",
+      "input": {
+        "file_path": "models/model.bin",
+        "file_bytes_hex": "414243444546474849",
+        "chunk_size": 4
+      },
+      "expected": {
+        "leaf_0_hash": "719cd3d140c2a126d99fb88622120492b250e934a56f0f93773d650d21ed037f",
+        "leaf_1_hash": "43d9fb53a57ba202b5f4db56a350aa0889d00ea8587fe4d9bd70ea4910f92c26",
+        "leaf_2_hash": "bc4cc00af916be1b7cd04e8d403a39e099d8d74b9a646da132d58d9af259c23c",
+        "merkle_root": "eebb49a6e7c030d322c50d8d3cb9323c08091a56158a208b19d823d00c246a7b",
+        "model_hash": "95ac46cbe619cff182dc38e2cb5bcd7bf15a96fe09a91aaf346d9b5d05fc3922"
+      }
+    },
+    {
+      "id": "PH-1",
+      "description": "Policy Hash with canonical JSON",
+      "input": {
+        "system_prompt": "You are an assistant.",
+        "guardrails": [
+          {
+            "id": "no_fake_degrees",
+            "rule": "No fake degrees"
+          }
+        ],
+        "moderation_policy_version": "2026-02-14",
+        "policy_spec_version": "1.0",
+        "attestation_completeness": "partial"
+      },
+      "canonical_json": "{\"attestation_completeness\":\"partial\",\"guardrails\":[{\"id\":\"no_fake_degrees\",\"rule\":\"No fake degrees\"}],\"moderation_policy_version\":\"2026-02-14\",\"policy_spec_version\":\"1.0\",\"system_prompt\":\"You are an assistant.\"}",
+      "expected": {
+        "policy_hash": "4f081b3563cd5362763879f8b3256a77af438cd0d2ed4c935284f01f248cf86f"
+      }
+    },
+    {
+      "id": "RH-1",
+      "description": "Runtime Hash with canonical JSON (temperature:0.7, top_p:1)",
+      "input": {
+        "temperature": 0.7,
+        "top_p": 1.0,
+        "max_tokens": 256,
+        "tooling_enabled": false,
+        "routing_mode": "language-aware",
+        "runtime_spec_version": "1.0"
+      },
+      "canonical_json": "{\"max_tokens\":256,\"routing_mode\":\"language-aware\",\"runtime_spec_version\":\"1.0\",\"temperature\":0.7,\"tooling_enabled\":false,\"top_p\":1}",
+      "expected": {
+        "runtime_hash": "827d100295de8a512a5d9a4138fadcdb5112d73e00dfd3fe163c142141d1faa0"
+      }
+    },
+    {
+      "id": "CIH-1",
+      "description": "Composite Instance Hash without instance_epoch",
+      "input": {
+        "model_hash": "4f656b70d087942661166d7a311e3f0afde26c4b21729a8004cac46135480900",
+        "policy_hash": "4f081b3563cd5362763879f8b3256a77af438cd0d2ed4c935284f01f248cf86f",
+        "runtime_hash": "827d100295de8a512a5d9a4138fadcdb5112d73e00dfd3fe163c142141d1faa0",
+        "instance_epoch": null
+      },
+      "expected": {
+        "composite_instance_hash": "db1d84656d67f5026fd7271cb3b44cf0814f85cc6031381bd22326ac0af1ca41"
+      }
+    },
+    {
+      "id": "CIH-2",
+      "description": "Composite Instance Hash with instance_epoch=1700000000",
+      "input": {
+        "model_hash": "4f656b70d087942661166d7a311e3f0afde26c4b21729a8004cac46135480900",
+        "policy_hash": "4f081b3563cd5362763879f8b3256a77af438cd0d2ed4c935284f01f248cf86f",
+        "runtime_hash": "827d100295de8a512a5d9a4138fadcdb5112d73e00dfd3fe163c142141d1faa0",
+        "instance_epoch": 1700000000
+      },
+      "expected": {
+        "composite_instance_hash": "ef40beb2c9f7c111b5e2e365c7f5b639fd57350125602c2ac35fd3372a445cfb"
+      }
+    }
+  ]
+}

@@ -145,10 +145,29 @@ Byte-identical output is required for interoperability.
 ### Alexandria Compliance
 Based on the reference implementation from `hstre/Alexandria-Protokoll`:
 - [x] Epistemic category system (EMPIRICAL/NORMATIVE/MODEL/SPECULATIVE)
-- [x] Patch-DSL operations (ADD/MODIFY/DEPRECATE/BRANCH)
+- [x] Patch-DSL operations (ADD/MODIFY/DEPRECATE)
 - [x] Audit gate with structural checks
 - [x] Hash chain anchoring
 - [x] Branch support for dissent
+
+### Test Vectors
+Normative test vectors are published for reproducibility and interoperability:
+
+```
+tests/vectors/
+├── identity_vectors.json    # MIVP v2.1 Appendix G test vectors
+└── patch_chain_vectors.json # Alexandria patch chain examples
+```
+
+Each test vector includes:
+- **Input**: Complete specification of inputs
+- **Expected Hash**: Byte-identical expected output
+- **Verification Result**: Expected validation outcome
+
+These vectors enable:
+- **External implementations** to verify compliance
+- **Scientific reproducibility** of hash computations
+- **Interoperability testing** between different implementations
 
 ## Use Cases
 

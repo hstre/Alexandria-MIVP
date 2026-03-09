@@ -68,7 +68,7 @@ def test_cfs1_float_edge_cases():
     
     cases = [
         (0.0, "0", "zero"),
-        (-0.0, "0", "negative zero → 0"),
+        (-0.0, "0", "negative zero -> 0"),
         (1.0, "1", "integer-valued, kein Dezimalpunkt"),
         (0.7, "0.7", "einfaches Decimal"),
         (0.9, "0.9", "einfaches Decimal"),

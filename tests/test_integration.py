@@ -117,7 +117,7 @@ def test_tamper_detection():
 
 def test_patch_without_identity():
     """Patch ohne mivp_identity: unverified, strict wirft AuditError."""
-    print("\n[4] Patch ohne Identity → unverified")
+    print("\n[4] Patch ohne Identity -> unverified")
     identity = make_identity()
     store = AlexandriaMIVPStore(identity)
     store.checkout("main")
@@ -134,7 +134,7 @@ def test_patch_without_identity():
     result = store.reconstruct_with_identity_verification("main", strict=False)
     vr = result["verification"]
     unverified_count = vr["unverified"] == 1
-    print(f" [{'PASS' if unverified_count else 'FAIL'}] reconstruct(strict=False) → unverified=1")
+    print(f" [{'PASS' if unverified_count else 'FAIL'}] reconstruct(strict=False) -> unverified=1")
     
     # strict=True: AuditError
     try:
