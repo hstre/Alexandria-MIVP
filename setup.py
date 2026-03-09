@@ -6,12 +6,12 @@ with open("README.md", "r", encoding="utf-8") as fh:
 setup(
     name="alexandria-mivp",
     version="0.1.0",
-    author="Steffen Rentschler",
-    author_email="your-email@example.com",
-    description="Epistemic consistency meets cryptographic identity verification for autonomous agents",
+    author="H.-Steffen Rentschler",
+    author_email="steffenswilly@bfscloud.de",
+    description="Binding claims to declared, hash-addressed model/policy/runtime profiles with epistemic consistency",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/alexandria-mivp",
+    url="https://github.com/hstre/Alexandria-MIVP",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     classifiers=[
@@ -35,6 +35,9 @@ setup(
     python_requires=">=3.8",
     install_requires=[],
     extras_require={
+        "signatures": [
+            "cryptography>=42.0.0",
+        ],
         "dev": [
             "pytest>=7.0.0",
             "black>=23.0.0",
