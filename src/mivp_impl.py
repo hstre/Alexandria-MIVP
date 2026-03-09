@@ -374,6 +374,184 @@ def run_test_vectors() -> bool:
     print("=" * 60)
     return all_pass
 
+# ----------------------------- Extended Runtime Hash (Three-layer) -----------------------------
+
+def canonicalize_runtime_config(
+    temperature: float,
+    top_p: float,
+    max_tokens: int,
+    tooling_enabled: bool,
+    routing_mode: str,
+    runtime_spec_version: str,
+) -> str:
+    """
+    Canonical JSON for runtime configuration (same as canonicalize_runtime).
+    Maintained for backward compatibility and clarity.
+    """
+    return canonicalize_runtime(
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=max_tokens,
+        tooling_enabled=tooling_enabled,
+        routing_mode=routing_mode,
+        runtime_spec_version=runtime_spec_version,
+    )
+
+def runtime_config_hash(canonical_config_json: str) -> bytes:
+    """
+    Hash of runtime configuration (same as runtime_hash).
+    """
+    return runtime_hash(canonical_config_json)
+
+def canonicalize_runtime_environment(
+    container_digest: str = "",
+    python_version: str = "",
+    dependency_hash: str = "",
+    model_route: str = "",
+    system_libraries: List[str] = None,
+    hardware_info: Dict[str, Any] = None,
+) -> str:
+    """
+    Canonical JSON for runtime execution environment.
+    Describes the actual execution context, not just configuration.
+    """
+    if system_libraries is None:
+        system_libraries = []
+    if hardware_info is None:
+        hardware_info = {}
+    
+    # Sort keys and lists for deterministic hashing
+    sorted_libs = sorted(system_libraries)
+    sorted_hardware = {k: hardware_info[k] for k in sorted(hardware_info.keys())}
+    
+    obj = {
+        "container_digest": container_digest,
+        "python_version": python_version,
+        "dependency_hash": dependency_hash,
+        "model_route": model_route,
+        "system_libraries": sorted_libs,
+        "hardware_info": sorted_hardware,
+    }
+    
+    # Remove empty fields to keep JSON minimal
+    obj = {k: v for k, v in obj.items() if v not in ([], {}, "")}
+    
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+def runtime_environment_hash(canonical_environment_json: str) -> bytes:
+    """
+    Hash of runtime environment.
+    Uses different domain separator to distinguish from config hash.
+    """
+    domain = b"\x03" + b"MIVP-RUNTIME-ENV-V1" + b"\x00"
+    payload = canonical_environment_json.encode("utf-8")
+    return sha256(domain + payload)
+
+def canonicalize_runtime_attestation(
+    tee_type: str = "",
+    tpm_quote: str = "",
+    attestation_proof: str = "",
+    secure_enclave_measurements: List[str] = None,
+    attestation_spec_version: str = "1.0",
+) -> str:
+    """
+    Canonical JSON for runtime attestation (TEE/TPM proofs).
+    """
+    if secure_enclave_measurements is None:
+        secure_enclave_measurements = []
+    
+    obj = {
+        "tee_type": tee_type,
+        "tpm_quote": tpm_quote,
+        "attestation_proof": attestation_proof,
+        "secure_enclave_measurements": sorted(secure_enclave_measurements),
+        "attestation_spec_version": attestation_spec_version,
+    }
+    
+    # Remove empty fields
+    obj = {k: v for k, v in obj.items() if v not in ([], {}, "")}
+    
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+def runtime_attestation_hash(canonical_attestation_json: str) -> bytes:
+    """
+    Hash of runtime attestation.
+    """
+    domain = b"\x03" + b"MIVP-RUNTIME-ATTEST-V1" + b"\x00"
+    payload = canonical_attestation_json.encode("utf-8")
+    return sha256(domain + payload)
+
+def runtime_extended_hash(
+    config_hash: bytes,
+    environment_hash: bytes,
+    attestation_hash: bytes,
+) -> bytes:
+    """
+    Combined runtime hash using all three layers.
+    RH_extended = SHA256(0x03 || "MIVP-RUNTIME-EXT-V1" || 0x00 || config_hash || environment_hash || attestation_hash)
+    """
+    domain = b"\x03" + b"MIVP-RUNTIME-EXT-V1" + b"\x00"
+    payload = config_hash + environment_hash + attestation_hash
+    return sha256(domain + payload)
+
+def demo_extended_runtime():
+    """Demonstrate three-layer runtime hashing."""
+    print("\n" + "=" * 60)
+    print("Extended Runtime Hash (Three-layer)")
+    print("=" * 60)
+    
+    # Config layer (traditional)
+    config_json = canonicalize_runtime_config(
+        temperature=0.7,
+        top_p=0.9,
+        max_tokens=4000,
+        tooling_enabled=True,
+        routing_mode="direct",
+        runtime_spec_version="1.0",
+    )
+    config_h = runtime_config_hash(config_json)
+    print(f"\n[Config Layer]")
+    print(f"  JSON: {config_json}")
+    print(f"  Hash: {config_h.hex()}")
+    
+    # Environment layer
+    env_json = canonicalize_runtime_environment(
+        container_digest="sha256:abc123...",
+        python_version="3.11.0",
+        dependency_hash="sha256:def456...",
+        model_route="/models/llama3",
+        system_libraries=["numpy", "torch", "transformers"],
+        hardware_info={"cpus": 8, "memory_gb": 32, "gpu": "A100"},
+    )
+    env_h = runtime_environment_hash(env_json)
+    print(f"\n[Environment Layer]")
+    print(f"  JSON: {env_json[:100]}...")
+    print(f"  Hash: {env_h.hex()}")
+    
+    # Attestation layer (optional)
+    attest_json = canonicalize_runtime_attestation(
+        tee_type="SGX",
+        tpm_quote="base64encoded...",
+        attestation_proof="signature...",
+        secure_enclave_measurements=["meas1", "meas2"],
+    )
+    attest_h = runtime_attestation_hash(attest_json)
+    print(f"\n[Attestation Layer]")
+    print(f"  JSON: {attest_json[:100]}...")
+    print(f"  Hash: {attest_h.hex()}")
+    
+    # Combined extended hash
+    extended_h = runtime_extended_hash(config_h, env_h, attest_h)
+    print(f"\n[Extended Runtime Hash]")
+    print(f"  Combined: {extended_h.hex()}")
+    print(f"\n  This provides:")
+    print(f"  1. Config binding (what parameters were used)")
+    print(f"  2. Environment binding (where it actually ran)")
+    print(f"  3. Attestation binding (hardware guarantees)")
+    
+    return extended_h, config_h, env_h, attest_h
+
+
 # ----------------------------- Demo for EpistemicWilly -----------------------------
 
 def demo_epistemicwilly():
