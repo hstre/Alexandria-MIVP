@@ -23,6 +23,12 @@ from .alexandria_mivp import (
     verify_cih_internal_consistency
 )
 
+from .sqlite_store import (
+    AlexandriaSQLiteStore,
+    AlexandriaSQLiteMIVPStore,
+    migrate_memory_to_sqlite
+)
+
 __version__ = "0.1.0"
 __all__ = [
     # Alexandria Protocol
