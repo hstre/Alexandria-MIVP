@@ -14,7 +14,9 @@ try:
     from cryptography.hazmat.primitives import serialization
     from cryptography.exceptions import InvalidSignature
     CRYPTOGRAPHY_AVAILABLE = True
-except ImportError:
+except BaseException:
+    # Catches ImportError as well as low-level failures (e.g. broken Rust
+    # extensions that raise pyo3_runtime.PanicException < BaseException).
     CRYPTOGRAPHY_AVAILABLE = False
     ed25519 = None
     serialization = None

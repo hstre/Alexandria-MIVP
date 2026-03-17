@@ -29,6 +29,11 @@ from .sqlite_store import (
     migrate_memory_to_sqlite
 )
 
+from .moltbook_integration import (
+    MoltbookIntegration,
+    MoltbookAPIError,
+)
+
 __version__ = "0.1.0"
 __all__ = [
     # Alexandria Protocol
@@ -46,4 +51,8 @@ __all__ = [
     # Integration
     "AlexandriaMIVPStore",
     "verify_cih_internal_consistency",
+
+    # Moltbook
+    "MoltbookIntegration",
+    "MoltbookAPIError",
 ]
