@@ -3,13 +3,9 @@ MIVP Agent Identity Example
 Demonstrates cryptographic identity verification for AI agents
 """
 
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from mivp_impl import (
+from alexandria_mivp import (
     AgentIdentity, model_hash, policy_hash, canonicalize_policy,
-    runtime_hash, canonicalize_runtime, composite_instance_hash
+    runtime_hash, canonicalize_runtime, composite_instance_hash,
 )
 
 def demonstrate_agent_identity():

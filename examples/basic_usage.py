@@ -2,11 +2,7 @@
 Basic Alexandria Protocol Usage Example
 """
 
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from alexandria_v2 import AlexandriaStore, Patch
+from alexandria_mivp import AlexandriaStore, Patch
 import json
 
 def demonstrate_basic_operations():

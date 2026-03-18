@@ -3,12 +3,7 @@ Alexandria + MIVP Integration Demo
 Shows end-to-end verifiable epistemic claims with cryptographic identity
 """
 
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from alexandria_mivp import AlexandriaMIVPStore, AgentIdentity
-from alexandria_v2 import Patch
+from alexandria_mivp import AlexandriaMIVPStore, AgentIdentity, Patch
 import json
 import time
 

@@ -5,13 +5,11 @@ Demonstration of the three critical fixes from PDF:
 2. AgentIdentity - normal class (not @dataclass)  
 3. Two-stage verification - internal vs agent matching
 """
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-
-from alexandria_mivp import AgentIdentity, AlexandriaMIVPStore, verify_cih_internal_consistency
-from alexandria_v2 import Patch
-from mivp_impl import cfs1_float, canonicalize_runtime
+from alexandria_mivp import (
+    AgentIdentity, AlexandriaMIVPStore, verify_cih_internal_consistency,
+    Patch, canonicalize_runtime,
+)
+from alexandria_mivp.mivp_impl import cfs1_float
 import json
 import time
 

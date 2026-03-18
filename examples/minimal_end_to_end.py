@@ -3,12 +3,7 @@
 Minimal End-to-End Example for Alexandria-MIVP
 Follows the 5-step process from the technical review memo.
 """
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-
-from alexandria_v2 import Patch
-from alexandria_mivp import AgentIdentity, AlexandriaMIVPStore
+from alexandria_mivp import Patch, AgentIdentity, AlexandriaMIVPStore
 import time
 
 print("=" * 70)

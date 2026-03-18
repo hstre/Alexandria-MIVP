@@ -2,13 +2,11 @@
 """
 Simple demonstration of the three fixes - ASCII only.
 """
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-
-from alexandria_mivp import AgentIdentity, AlexandriaMIVPStore, verify_cih_internal_consistency
-from alexandria_v2 import Patch
-from mivp_impl import cfs1_float, canonicalize_runtime
+from alexandria_mivp import (
+    AgentIdentity, AlexandriaMIVPStore, verify_cih_internal_consistency,
+    Patch, canonicalize_runtime,
+)
+from alexandria_mivp.mivp_impl import cfs1_float
 import json
 import time
 

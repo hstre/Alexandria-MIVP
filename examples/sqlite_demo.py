@@ -3,12 +3,7 @@
 Demonstration of SQLite persistence for Alexandria-MIVP.
 Shows migration from memory store to SQLite and advanced queries.
 """
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-
-from alexandria_v2 import Patch, AlexandriaStore
-from sqlite_store import AlexandriaSQLiteStore, migrate_memory_to_sqlite
+from alexandria_mivp import Patch, AlexandriaStore, AlexandriaSQLiteStore, migrate_memory_to_sqlite
 import time
 import tempfile
 import shutil
