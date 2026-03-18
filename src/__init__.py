@@ -34,6 +34,12 @@ from .moltbook_integration import (
     MoltbookAPIError,
 )
 
+from .heartbeat import (
+    EpistemicHeartbeat,
+    HeartbeatReport,
+    run_heartbeat_check,
+)
+
 __version__ = "0.1.0"
 __all__ = [
     # Alexandria Protocol
@@ -55,4 +61,9 @@ __all__ = [
     # Moltbook
     "MoltbookIntegration",
     "MoltbookAPIError",
+
+    # Heartbeat
+    "EpistemicHeartbeat",
+    "HeartbeatReport",
+    "run_heartbeat_check",
 ]
