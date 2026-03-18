@@ -29,7 +29,10 @@ from alexandria_v2 import (
 
 from mivp_impl import (
     model_hash, policy_hash, canonicalize_policy,
-    runtime_hash, canonicalize_runtime, composite_instance_hash
+    runtime_hash, canonicalize_runtime, composite_instance_hash,
+    canonicalize_runtime_environment, runtime_environment_hash,
+    canonicalize_runtime_attestation, runtime_attestation_hash,
+    runtime_extended_hash,
 )
 
 try:
@@ -314,28 +317,59 @@ class AgentIdentity:
                  tooling_enabled: bool = True,
                  routing_mode: str = "direct",
                  runtime_spec_version: str = "1.0",
+                 # Extended runtime hash – environment layer (optional)
+                 container_digest: str = "",
+                 python_version: str = "",
+                 dependency_hash: str = "",
+                 model_route: str = "",
+                 system_libraries: Optional[List[str]] = None,
+                 hardware_info: Optional[Dict[str, Any]] = None,
+                 # Extended runtime hash – attestation layer (optional)
+                 tee_type: str = "",
+                 tpm_quote: str = "",
+                 attestation_proof: str = "",
+                 secure_enclave_measurements: Optional[List[str]] = None,
+                 attestation_spec_version: str = "1.0",
+                 # Whether to use the three-layer extended runtime hash
+                 use_extended_runtime_hash: bool = False,
                  # Digital signature
                  private_key: Optional[bytes] = None,
                  signer: Optional['DigitalSigner'] = None):
-        
+
         self.name = name
         self.model_path = model_path
         self.model_bytes = model_bytes
         self.model_chunk_size = model_chunk_size
-        
+
         self.system_prompt = system_prompt
         self.guardrails = guardrails if guardrails is not None else []
         self.moderation_policy_version = moderation_policy_version
         self.policy_spec_version = policy_spec_version
         self.attestation_completeness = attestation_completeness
-        
+
         self.temperature = temperature
         self.top_p = top_p
         self.max_tokens = max_tokens
         self.tooling_enabled = tooling_enabled
         self.routing_mode = routing_mode
         self.runtime_spec_version = runtime_spec_version
-        
+
+        # Extended runtime hash parameters
+        self.use_extended_runtime_hash = use_extended_runtime_hash
+        # Environment layer
+        self.container_digest = container_digest
+        self.python_version = python_version
+        self.dependency_hash = dependency_hash
+        self.model_route = model_route
+        self.system_libraries = system_libraries if system_libraries is not None else []
+        self.hardware_info = hardware_info if hardware_info is not None else {}
+        # Attestation layer
+        self.tee_type = tee_type
+        self.tpm_quote = tpm_quote
+        self.attestation_proof = attestation_proof
+        self.secure_enclave_measurements = secure_enclave_measurements if secure_enclave_measurements is not None else []
+        self.attestation_spec_version = attestation_spec_version
+
         # Digital signature
         if signer is not None:
             self.signer = signer
@@ -346,12 +380,16 @@ class AgentIdentity:
                 # If cryptography not available, create a dummy signer that can't sign
                 self.signer = None
                 self._signature_warning = str(e)
-        
+
         # Computed hashes (cached, private)
         self.__mh = None
         self.__ph = None
         self.__rh = None
         self.__cih = None
+        # Extended sub-hashes (cached)
+        self.__config_h = None
+        self.__env_h = None
+        self.__attest_h = None
     
     def compute_mh(self) -> bytes:
         """Compute Model Hash."""
@@ -378,9 +416,16 @@ class AgentIdentity:
         return self.__ph
     
     def compute_rh(self) -> bytes:
-        """Compute Runtime Hash."""
+        """Compute Runtime Hash.
+
+        When ``use_extended_runtime_hash`` is True, combines three layers:
+        config, environment, and attestation into a single extended hash.
+        The individual sub-hashes are cached as ``_config_h``, ``_env_h``,
+        and ``_attest_h`` for inspection and inclusion in identity dicts.
+        """
         if self.__rh is None:
-            canonical = canonicalize_runtime(
+            # Config layer (always computed)
+            canonical_config = canonicalize_runtime(
                 temperature=self.temperature,
                 top_p=self.top_p,
                 max_tokens=self.max_tokens,
@@ -388,7 +433,39 @@ class AgentIdentity:
                 routing_mode=self.routing_mode,
                 runtime_spec_version=self.runtime_spec_version,
             )
-            self.__rh = runtime_hash(canonical)
+            config_h = runtime_hash(canonical_config)
+
+            if self.use_extended_runtime_hash:
+                # Environment layer
+                canonical_env = canonicalize_runtime_environment(
+                    container_digest=self.container_digest,
+                    python_version=self.python_version,
+                    dependency_hash=self.dependency_hash,
+                    model_route=self.model_route,
+                    system_libraries=self.system_libraries,
+                    hardware_info=self.hardware_info,
+                )
+                env_h = runtime_environment_hash(canonical_env)
+
+                # Attestation layer
+                canonical_attest = canonicalize_runtime_attestation(
+                    tee_type=self.tee_type,
+                    tpm_quote=self.tpm_quote,
+                    attestation_proof=self.attestation_proof,
+                    secure_enclave_measurements=self.secure_enclave_measurements,
+                    attestation_spec_version=self.attestation_spec_version,
+                )
+                attest_h = runtime_attestation_hash(canonical_attest)
+
+                # Cache sub-hashes
+                self.__config_h = config_h
+                self.__env_h = env_h
+                self.__attest_h = attest_h
+
+                self.__rh = runtime_extended_hash(config_h, env_h, attest_h)
+            else:
+                self.__rh = config_h
+
         return self.__rh
     
     def compute_cih(self, instance_epoch: Optional[int] = None) -> bytes:
@@ -417,7 +494,15 @@ class AgentIdentity:
             **({"instance_epoch": instance_epoch} if instance_epoch is not None else {}),
             "timestamp": int(time.time()),
         }
-        
+
+        # Include extended runtime sub-hashes when active
+        if self.use_extended_runtime_hash and self.__config_h is not None:
+            identity["rh_extended"] = {
+                "config_h": self.__config_h.hex(),
+                "env_h": self.__env_h.hex(),
+                "attest_h": self.__attest_h.hex(),
+            }
+
         # Add digital signature if signer is available
         if hasattr(self, 'signer') and self.signer is not None:
             try:
@@ -426,7 +511,7 @@ class AgentIdentity:
             except (AttributeError, RuntimeError):
                 # Signer exists but can't sign (e.g., cryptography not available)
                 pass
-        
+
         return identity
     
     def matches_identity_dict(self, identity: Dict[str, Any]) -> bool:

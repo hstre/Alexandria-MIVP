@@ -14,7 +14,10 @@ from .mivp_impl import (
     runtime_hash, canonicalize_runtime, composite_instance_hash,
     leaf_hash, node_hash, merkle_root,
     verify as verify_test_vectors,
-    run_test_vectors
+    run_test_vectors,
+    canonicalize_runtime_environment, runtime_environment_hash,
+    canonicalize_runtime_attestation, runtime_attestation_hash,
+    runtime_extended_hash,
 )
 
 from .alexandria_mivp import (
@@ -78,6 +81,10 @@ __all__ = [
     "runtime_hash", "canonicalize_runtime", "composite_instance_hash",
     "leaf_hash", "node_hash", "merkle_root",
     "verify_test_vectors", "run_test_vectors",
+    # Extended Runtime Hash
+    "canonicalize_runtime_environment", "runtime_environment_hash",
+    "canonicalize_runtime_attestation", "runtime_attestation_hash",
+    "runtime_extended_hash",
     
     # Integration
     "AlexandriaMIVPStore",
