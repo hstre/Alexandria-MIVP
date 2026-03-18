@@ -85,6 +85,49 @@ from .uncertainty_propagator import (
     PropagationReport,
 )
 
+from .cross_agent_graph import (
+    CrossAgentGraph,
+    ClaimNode,
+    GraphEdge,
+    EdgeType,
+    GraphQueryResult,
+    AgentContribution,
+    EpistemicConflict,
+)
+
+from .performance import (
+    NodeCache,
+    QueryCache,
+    BatchProcessor,
+    BatchResult,
+    BatchReport,
+    PerformanceMonitor,
+)
+
+from .distributed_store import (
+    DistributedBackend,
+    InMemoryBackend,
+    S3Backend,
+    IPFSBackend,
+    DistributedLedgerBackend,
+    MultiBackend,
+    DistributedAlexandriaStore,
+    StoredObject,
+    BackendHealth,
+    StorageError,
+    LedgerEntry,
+)
+
+from .formal_verification import (
+    EpistemicVerifier,
+    VerificationReport,
+    VerificationResult,
+    VerificationStatus,
+    PropertyResult,
+    Invariant,
+    Property,
+)
+
 __version__ = "0.1.0"
 __all__ = [
     # Alexandria Protocol
@@ -152,4 +195,43 @@ __all__ = [
     "PropagationMode",
     "PropagationResult",
     "PropagationReport",
+
+    # Cross-Agent Epistemic Graphs
+    "CrossAgentGraph",
+    "ClaimNode",
+    "GraphEdge",
+    "EdgeType",
+    "GraphQueryResult",
+    "AgentContribution",
+    "EpistemicConflict",
+
+    # Performance
+    "NodeCache",
+    "QueryCache",
+    "BatchProcessor",
+    "BatchResult",
+    "BatchReport",
+    "PerformanceMonitor",
+
+    # Distributed Storage
+    "DistributedBackend",
+    "InMemoryBackend",
+    "S3Backend",
+    "IPFSBackend",
+    "DistributedLedgerBackend",
+    "MultiBackend",
+    "DistributedAlexandriaStore",
+    "StoredObject",
+    "BackendHealth",
+    "StorageError",
+    "LedgerEntry",
+
+    # Formal Verification
+    "EpistemicVerifier",
+    "VerificationReport",
+    "VerificationResult",
+    "VerificationStatus",
+    "PropertyResult",
+    "Invariant",
+    "Property",
 ]
