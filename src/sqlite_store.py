@@ -133,11 +133,24 @@ class AlexandriaSQLiteStore(AlexandriaStore):
                 timestamp INTEGER,
                 signer_id_hex TEXT,
                 signature_hex TEXT,
+                rh_extended_json TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                
+
                 FOREIGN KEY (patch_id) REFERENCES patches(patch_id)
             )
         """)
+
+        # Migrate: add rh_extended_json column if missing (idempotent)
+        try:
+            cursor.execute("ALTER TABLE identity_hashes ADD COLUMN rh_extended_json TEXT")
+        except Exception:
+            pass  # Column already exists
+
+        # Indexes for efficient identity queries
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_identity_agent ON identity_hashes(agent_name)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_identity_cih ON identity_hashes(cih_hex)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_identity_mh ON identity_hashes(mh_hex)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_identity_epoch ON identity_hashes(instance_epoch)")
         
         # Insert default 'main' branch if it doesn't exist
         cursor.execute("""
@@ -391,11 +404,17 @@ class AlexandriaSQLiteStore(AlexandriaStore):
             # Update MIVP identity if present
             if "mivp_identity" in anchored.audit:
                 identity = anchored.audit["mivp_identity"]
+                rh_extended = identity.get("rh_extended")
+                rh_extended_json = (
+                    json.dumps(rh_extended, separators=(",", ":"), ensure_ascii=False)
+                    if rh_extended else None
+                )
                 cursor.execute("""
                     INSERT OR REPLACE INTO identity_hashes (
                         patch_id, agent_name, mh_hex, ph_hex, rh_hex,
-                        cih_hex, instance_epoch, timestamp, signer_id_hex, signature_hex
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        cih_hex, instance_epoch, timestamp, signer_id_hex,
+                        signature_hex, rh_extended_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     anchored.patch_id,
                     identity.get("agent_name"),
@@ -407,6 +426,7 @@ class AlexandriaSQLiteStore(AlexandriaStore):
                     identity.get("timestamp"),
                     identity.get("signer_id"),
                     identity.get("signature"),
+                    rh_extended_json,
                 ))
             
             self.conn.commit()
@@ -834,16 +854,12 @@ class AlexandriaSQLiteMIVPStore(AlexandriaSQLiteStore):
     def get_identity_for_patch(self, patch_id: str) -> Optional[Dict[str, Any]]:
         """Get MIVP identity information for a patch."""
         cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT * FROM identity_hashes 
-            WHERE patch_id = ?
-        """, (patch_id,))
-        
+        cursor.execute("SELECT * FROM identity_hashes WHERE patch_id = ?", (patch_id,))
         row = cursor.fetchone()
         if not row:
             return None
-        
-        return {
+
+        result = {
             "agent_name": row["agent_name"],
             "mh": row["mh_hex"],
             "ph": row["ph_hex"],
@@ -854,14 +870,295 @@ class AlexandriaSQLiteMIVPStore(AlexandriaSQLiteStore):
             "signer_id": row["signer_id_hex"],
             "signature": row["signature_hex"],
         }
-    
+        # Include extended runtime hash sub-hashes if stored
+        rh_extended_json = row["rh_extended_json"] if "rh_extended_json" in row.keys() else None
+        if rh_extended_json:
+            result["rh_extended"] = json.loads(rh_extended_json)
+        return result
+
     def verify_patch_identity_internal(self, patch_id: str) -> bool:
         """Verify internal consistency of patch identity (CIH matches MH/PH/RH)."""
         identity = self.get_identity_for_patch(patch_id)
         if not identity:
             return False
-        
         return verify_cih_internal_consistency(identity)
+
+    # ------------------------------------------------------------------ #
+    # Extended identity query patterns                                     #
+    # ------------------------------------------------------------------ #
+
+    def get_all_agents(self) -> List[str]:
+        """Return a sorted list of all distinct agent names that have submitted patches."""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT DISTINCT agent_name
+            FROM identity_hashes
+            WHERE agent_name IS NOT NULL
+            ORDER BY agent_name
+        """)
+        return [row["agent_name"] for row in cursor.fetchall()]
+
+    def count_patches_by_agent(self) -> Dict[str, int]:
+        """Return a mapping of agent_name → patch count."""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT agent_name, COUNT(*) AS cnt
+            FROM identity_hashes
+            WHERE agent_name IS NOT NULL
+            GROUP BY agent_name
+            ORDER BY cnt DESC
+        """)
+        return {row["agent_name"]: row["cnt"] for row in cursor.fetchall()}
+
+    def get_patches_by_cih(self, cih_hex: str) -> List[Patch]:
+        """Get all patches submitted with a specific Composite Instance Hash."""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT p.* FROM patches p
+            JOIN identity_hashes ih ON p.patch_id = ih.patch_id
+            WHERE ih.cih_hex = ?
+            ORDER BY p.timestamp ASC
+        """, (cih_hex,))
+        return [self._deserialize_patch(row) for row in cursor.fetchall()]
+
+    def get_patches_by_mh(self, mh_hex: str) -> List[Patch]:
+        """Get all patches submitted by agents sharing a specific Model Hash."""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT p.* FROM patches p
+            JOIN identity_hashes ih ON p.patch_id = ih.patch_id
+            WHERE ih.mh_hex = ?
+            ORDER BY p.timestamp ASC
+        """, (mh_hex,))
+        return [self._deserialize_patch(row) for row in cursor.fetchall()]
+
+    def get_patches_in_epoch_range(
+        self,
+        agent_name: str,
+        start_epoch: Optional[int] = None,
+        end_epoch: Optional[int] = None,
+    ) -> List[Patch]:
+        """
+        Get patches submitted by an agent within an instance epoch range.
+        None means unbounded on that side.
+        """
+        cursor = self.conn.cursor()
+        conditions = ["ih.agent_name = ?"]
+        params: list = [agent_name]
+        if start_epoch is not None:
+            conditions.append("ih.instance_epoch >= ?")
+            params.append(start_epoch)
+        if end_epoch is not None:
+            conditions.append("ih.instance_epoch <= ?")
+            params.append(end_epoch)
+        where = " AND ".join(conditions)
+        cursor.execute(f"""
+            SELECT p.* FROM patches p
+            JOIN identity_hashes ih ON p.patch_id = ih.patch_id
+            WHERE {where}
+            ORDER BY p.timestamp ASC
+        """, params)
+        return [self._deserialize_patch(row) for row in cursor.fetchall()]
+
+    def get_agent_statistics(self, agent_name: str) -> Dict[str, Any]:
+        """
+        Compute statistics for a single agent's contribution history.
+
+        Returns:
+            patch_count, distinct_cih_count, distinct_mh_count,
+            first_seen, last_seen, epoch_min, epoch_max,
+            category_breakdown, signed_count
+        """
+        cursor = self.conn.cursor()
+
+        # Patch count and time range
+        cursor.execute("""
+            SELECT COUNT(*) AS cnt,
+                   MIN(p.timestamp) AS first_ts,
+                   MAX(p.timestamp) AS last_ts,
+                   MIN(ih.instance_epoch) AS ep_min,
+                   MAX(ih.instance_epoch) AS ep_max
+            FROM patches p
+            JOIN identity_hashes ih ON p.patch_id = ih.patch_id
+            WHERE ih.agent_name = ?
+        """, (agent_name,))
+        row = cursor.fetchone()
+        if not row or row["cnt"] == 0:
+            return {"agent_name": agent_name, "patch_count": 0}
+
+        # Distinct hashes (detect model/policy/runtime drift)
+        cursor.execute("""
+            SELECT COUNT(DISTINCT cih_hex) AS d_cih,
+                   COUNT(DISTINCT mh_hex)  AS d_mh,
+                   COUNT(DISTINCT ph_hex)  AS d_ph,
+                   COUNT(DISTINCT rh_hex)  AS d_rh
+            FROM identity_hashes
+            WHERE agent_name = ?
+        """, (agent_name,))
+        hrow = cursor.fetchone()
+
+        # Category breakdown
+        cursor.execute("""
+            SELECT p.category, COUNT(*) AS cnt
+            FROM patches p
+            JOIN identity_hashes ih ON p.patch_id = ih.patch_id
+            WHERE ih.agent_name = ?
+            GROUP BY p.category
+        """, (agent_name,))
+        category_breakdown = {r["category"]: r["cnt"] for r in cursor.fetchall()}
+
+        # Signed patches
+        cursor.execute("""
+            SELECT COUNT(*) AS cnt
+            FROM identity_hashes
+            WHERE agent_name = ? AND signature_hex IS NOT NULL
+        """, (agent_name,))
+        signed_count = cursor.fetchone()["cnt"]
+
+        return {
+            "agent_name": agent_name,
+            "patch_count": row["cnt"],
+            "first_seen": row["first_ts"],
+            "last_seen": row["last_ts"],
+            "epoch_min": row["ep_min"],
+            "epoch_max": row["ep_max"],
+            "distinct_cih_count": hrow["d_cih"],
+            "distinct_mh_count": hrow["d_mh"],
+            "distinct_ph_count": hrow["d_ph"],
+            "distinct_rh_count": hrow["d_rh"],
+            "category_breakdown": category_breakdown,
+            "signed_count": signed_count,
+        }
+
+    def find_identity_drift(self, agent_name: str) -> List[Dict[str, Any]]:
+        """
+        Detect identity drift for an agent: moments when MH, PH, or RH changed.
+
+        Returns a list of changepoints (each representing a patch where at least
+        one hash component changed relative to the previous patch from this agent).
+        """
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT ih.patch_id, ih.mh_hex, ih.ph_hex, ih.rh_hex, ih.cih_hex,
+                   ih.instance_epoch, p.timestamp
+            FROM identity_hashes ih
+            JOIN patches p ON ih.patch_id = p.patch_id
+            WHERE ih.agent_name = ?
+            ORDER BY p.timestamp ASC
+        """, (agent_name,))
+        rows = cursor.fetchall()
+
+        changepoints = []
+        prev = None
+        for row in rows:
+            if prev is not None:
+                changed = []
+                if row["mh_hex"] != prev["mh_hex"]:
+                    changed.append("mh")
+                if row["ph_hex"] != prev["ph_hex"]:
+                    changed.append("ph")
+                if row["rh_hex"] != prev["rh_hex"]:
+                    changed.append("rh")
+                if changed:
+                    changepoints.append({
+                        "patch_id": row["patch_id"],
+                        "timestamp": row["timestamp"],
+                        "changed_components": changed,
+                        "new_cih": row["cih_hex"],
+                        "prev_cih": prev["cih_hex"],
+                        "instance_epoch": row["instance_epoch"],
+                    })
+            prev = row
+
+        return changepoints
+
+    def get_identity_timeline(self, agent_name: str) -> List[Dict[str, Any]]:
+        """
+        Return a chronological timeline of identity snapshots for an agent.
+
+        Each entry represents one submitted patch with its full identity state,
+        so callers can reconstruct how the agent's identity evolved over time.
+        """
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT ih.*, p.timestamp AS patch_ts, p.branch_id, p.category
+            FROM identity_hashes ih
+            JOIN patches p ON ih.patch_id = p.patch_id
+            WHERE ih.agent_name = ?
+            ORDER BY p.timestamp ASC
+        """, (agent_name,))
+
+        timeline = []
+        for row in cursor.fetchall():
+            entry = {
+                "patch_id": row["patch_id"],
+                "timestamp": row["patch_ts"],
+                "branch_id": row["branch_id"],
+                "category": row["category"],
+                "mh": row["mh_hex"],
+                "ph": row["ph_hex"],
+                "rh": row["rh_hex"],
+                "cih": row["cih_hex"],
+                "instance_epoch": row["instance_epoch"],
+                "signed": row["signature_hex"] is not None,
+            }
+            rh_ext = row["rh_extended_json"] if "rh_extended_json" in row.keys() else None
+            if rh_ext:
+                entry["rh_extended"] = json.loads(rh_ext)
+            timeline.append(entry)
+        return timeline
+
+    def find_unverified_patches(self, branch_id: Optional[str] = None) -> List[Patch]:
+        """
+        Find patches that have no MIVP identity attached.
+        Useful for auditing which patches lack cryptographic provenance.
+        """
+        cursor = self.conn.cursor()
+        if branch_id:
+            cursor.execute("""
+                SELECT p.* FROM patches p
+                LEFT JOIN identity_hashes ih ON p.patch_id = ih.patch_id
+                WHERE ih.patch_id IS NULL AND p.branch_id = ?
+                ORDER BY p.timestamp ASC
+            """, (branch_id,))
+        else:
+            cursor.execute("""
+                SELECT p.* FROM patches p
+                LEFT JOIN identity_hashes ih ON p.patch_id = ih.patch_id
+                WHERE ih.patch_id IS NULL
+                ORDER BY p.timestamp ASC
+            """)
+        return [self._deserialize_patch(row) for row in cursor.fetchall()]
+
+    def find_patches_with_extended_rh(self, agent_name: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Find patches that used the three-layer extended runtime hash.
+        Returns lightweight dicts (patch_id, agent_name, rh_extended sub-hashes).
+        """
+        cursor = self.conn.cursor()
+        if agent_name:
+            cursor.execute("""
+                SELECT patch_id, agent_name, cih_hex, rh_extended_json
+                FROM identity_hashes
+                WHERE rh_extended_json IS NOT NULL AND agent_name = ?
+                ORDER BY timestamp ASC
+            """, (agent_name,))
+        else:
+            cursor.execute("""
+                SELECT patch_id, agent_name, cih_hex, rh_extended_json
+                FROM identity_hashes
+                WHERE rh_extended_json IS NOT NULL
+                ORDER BY timestamp ASC
+            """)
+        results = []
+        for row in cursor.fetchall():
+            results.append({
+                "patch_id": row["patch_id"],
+                "agent_name": row["agent_name"],
+                "cih": row["cih_hex"],
+                "rh_extended": json.loads(row["rh_extended_json"]),
+            })
+        return results
 
 
 def migrate_memory_to_sqlite(memory_store: AlexandriaStore, db_path: str) -> AlexandriaSQLiteStore:
