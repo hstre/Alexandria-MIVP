@@ -68,6 +68,16 @@ from .sub_agent import (
     ConsensusResult,
 )
 
+from .audit_gate import (
+    AuditGate,
+    AuditGateConfig,
+    AuditReport,
+    AuditViolation,
+    Severity,
+    make_default_gate,
+    make_strict_empirical_gate,
+)
+
 __version__ = "0.1.0"
 __all__ = [
     # Alexandria Protocol
@@ -120,4 +130,13 @@ __all__ = [
     "MultiAgentCoordinator",
     "EvaluationResult",
     "ConsensusResult",
+
+    # Extended Audit Gate
+    "AuditGate",
+    "AuditGateConfig",
+    "AuditReport",
+    "AuditViolation",
+    "Severity",
+    "make_default_gate",
+    "make_strict_empirical_gate",
 ]
