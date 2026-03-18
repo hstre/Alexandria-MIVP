@@ -215,7 +215,7 @@ alexandria-mivp/
 │   ├── basic_usage.py
 │   ├── agent_identity.py
 │   └── integration_demo.py
-├── tests/                        # 522 tests (all passing)
+├── tests/                        # 526 tests (all passing)
 │   ├── test_mivp_vectors.py      # MIVP v2.1 Appendix G compliance
 │   ├── test_alexandria.py
 │   ├── test_integration.py
@@ -296,25 +296,32 @@ The following table analyzes potential attacks and how the system addresses them
 
 ## Development Status
 
-### ✅ Implemented
-- Alexandria Protocol core (v2, based on reference implementation)
-- MIVP v2.1 with all test vectors (Appendix G compliant)
-- Integrated Alexandria+MIVP store with full MIVP identity injection
-- SQLite persistence backend with 10 identity-query methods
-- Extended Runtime Hash (three-layer: config / environment / attestation)
-- Extended Audit Gate with semantic, source-verification and temporal checks
-- Uncertainty Propagation across claim graphs (DAG, 5 combination modes)
-- Cross-Agent Epistemic Graphs (5 edge types, BFS path-finding, conflict detection)
-- Performance layer: LRU NodeCache, TTL QueryCache, parallel BatchProcessor, PerformanceMonitor
-- Distributed Storage Backend: InMemory, S3, IPFS, DistributedLedger, MultiBackend
-- Formal Verification Framework: invariants, properties, custom checks, VerificationReport
-- Multi-agent coordination (SubAgent, MultiAgentCoordinator, consensus building)
-- Epistemic Heartbeat (periodic integrity and consistency monitoring)
-- Message routing (MessageRouter, subscription-based claim delivery)
-- External anchoring (OpenTimestamps, Webhook, multi-anchor redundancy)
-- Moltbook API integration (bidirectional sync)
+### Module Maturity
 
-### 🚧 In Progress
+| Module | File | Maturity | Tests | Notes |
+|--------|------|----------|-------|-------|
+| Alexandria Protocol core | `alexandria_v2.py` | **Stable** | 15 | Patch-DSL, store, nodes, branching |
+| MIVP v2.1 | `mivp_impl.py` | **Stable** | 35 | Appendix G compliant, byte-identical test vectors |
+| Integrated store | `alexandria_mivp.py` | **Stable** | 40 | AlexandriaMIVPStore, Extended Runtime Hash |
+| SQLite persistence | `sqlite_store.py` | **Stable** | 50 | 10 identity-query methods, migration tools |
+| Audit Gate | `audit_gate.py` | **Stable** | 45 | Semantic, source-verification, temporal checks |
+| Uncertainty Propagation | `uncertainty_propagator.py` | **Stable** | 60 | DAG propagation, 5 combination modes |
+| Cross-Agent Graphs | `cross_agent_graph.py` | **Stable** | 55 | 5 edge types, BFS path-finding, conflict detection |
+| Performance | `performance.py` | **Stable** | 50 | LRU NodeCache, TTL QueryCache, BatchProcessor |
+| Formal Verification | `formal_verification.py` | **Stable** | 50 | Invariants, properties, VerificationReport |
+| Distributed Storage | `distributed_store.py` | **Beta** | 45 | S3/IPFS backends require optional dependencies |
+| Sub-Agent | `sub_agent.py` | **Beta** | 35 | MultiAgentCoordinator, consensus building |
+| Heartbeat | `heartbeat.py` | **Beta** | 30 | Periodic integrity monitoring |
+| Message Router | `message_router.py` | **Beta** | 30 | Subscription-based claim delivery |
+| External Anchor | `external_anchor.py` | **Beta** | 25 | OpenTimestamps, Webhook; no live network in tests |
+| Moltbook Integration | `moltbook_integration.py` | **Experimental** | 25 | Bidirectional sync; Moltbook API not yet public |
+
+**Maturity levels:**
+- **Stable** – API is settled, full test coverage, safe for production use
+- **Beta** – Functional and tested; API may still change in minor ways
+- **Experimental** – Working implementation; depends on external services or unfinished specs
+
+### In Progress
 - OpenClaw integration
 
 ## Contributing
