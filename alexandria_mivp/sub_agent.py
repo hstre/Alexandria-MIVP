@@ -19,14 +19,9 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-try:
-    from .alexandria_v2 import Patch, CATEGORIES
-    from .alexandria_mivp import AlexandriaMIVPStore, AgentIdentity, verify_cih_internal_consistency
-    from .message_router import MessageRouter
-except ImportError:
-    from alexandria_v2 import Patch, CATEGORIES  # type: ignore[no-redef]
-    from alexandria_mivp import AlexandriaMIVPStore, AgentIdentity, verify_cih_internal_consistency  # type: ignore[no-redef]
-    from message_router import MessageRouter  # type: ignore[no-redef]
+from .alexandria_v2 import Patch, CATEGORIES
+from .alexandria_mivp import AlexandriaMIVPStore, AgentIdentity, verify_cih_internal_consistency
+from .message_router import MessageRouter
 
 logger = logging.getLogger(__name__)
 

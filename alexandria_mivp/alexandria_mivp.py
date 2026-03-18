@@ -22,12 +22,12 @@ except BaseException:
     serialization = None
     InvalidSignature = Exception
 
-from alexandria_v2 import (
-    CATEGORIES, OPS, Uncertainty, Node, Patch, AuditError, 
+from .alexandria_v2 import (
+    CATEGORIES, OPS, Uncertainty, Node, Patch, AuditError,
     audit_patch, AlexandriaStore, sha256_json, clamp01
 )
 
-from mivp_impl import (
+from .mivp_impl import (
     model_hash, policy_hash, canonicalize_policy,
     runtime_hash, canonicalize_runtime, composite_instance_hash,
     canonicalize_runtime_environment, runtime_environment_hash,
@@ -36,7 +36,7 @@ from mivp_impl import (
 )
 
 try:
-    from external_anchor import (
+    from .external_anchor import (
         BaseExternalAnchor,
         SimulatedAnchor,
         OpenTimestampsAnchor,

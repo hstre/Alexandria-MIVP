@@ -1,14 +1,11 @@
 """Tests for distributed_store.py."""
-import sys
-import os
 import json
 import time
 import pytest
 import threading
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from distributed_store import (
+from alexandria_mivp.distributed_store import (
     InMemoryBackend,
     S3Backend,
     IPFSBackend,

@@ -2,15 +2,12 @@
 Tests für den Message Router.
 """
 
-import sys
-import os
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from alexandria_v2 import Patch
-from alexandria_mivp import AlexandriaMIVPStore, AgentIdentity
-from message_router import MessageRouter, RouteResult, MiddlewareContext
+from alexandria_mivp.alexandria_v2 import Patch
+from alexandria_mivp.alexandria_mivp import AlexandriaMIVPStore, AgentIdentity
+from alexandria_mivp.message_router import MessageRouter, RouteResult, MiddlewareContext
 
 
 def make_identity(name="RouterTestAgent"):

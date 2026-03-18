@@ -52,10 +52,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional, Set, Tuple
 
-try:
-    from alexandria_v2 import Node, Patch
-except ImportError:
-    from .alexandria_v2 import Node, Patch
+from .alexandria_v2 import Node, Patch
 
 
 # ---------------------------------------------------------------------------

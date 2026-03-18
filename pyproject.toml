@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "alexandria-mivp"
+version = "0.1.0"
+description = "Binding claims to declared, hash-addressed model/policy/runtime profiles with epistemic consistency"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "H.-Steffen Rentschler", email = "tentschler@lbsmail.de" }]
+requires-python = ">=3.8"
+dependencies = []
+
+[project.optional-dependencies]
+signatures = ["cryptography>=42.0.0"]
+s3        = ["boto3>=1.26.0"]
+ipfs      = ["requests>=2.28.0"]
+dev       = ["pytest>=7.0.0", "black>=23.0.0", "mypy>=1.0.0"]
+all       = ["cryptography>=42.0.0", "boto3>=1.26.0", "requests>=2.28.0"]
+
+[project.urls]
+Homepage   = "https://github.com/hstre/Alexandria-MIVP"
+Repository = "https://github.com/hstre/Alexandria-MIVP"
+Issues     = "https://github.com/hstre/Alexandria-MIVP/issues"
+
+[project.scripts]
+alexandria-demo = "alexandria_mivp.examples.integration_demo:main"
+
+[tool.setuptools.packages.find]
+include = ["alexandria_mivp*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts   = "-q"
+
+[tool.mypy]
+python_version = "3.8"
+ignore_missing_imports = true

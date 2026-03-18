@@ -1,12 +1,9 @@
 """Tests for formal_verification.py (EpistemicVerifier, properties, invariants)."""
-import sys
-import os
 import time
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from formal_verification import (
+from alexandria_mivp.formal_verification import (
     EpistemicVerifier,
     VerificationReport,
     VerificationResult,

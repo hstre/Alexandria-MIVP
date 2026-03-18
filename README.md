@@ -73,7 +73,7 @@ No external dependencies required (pure Python 3.8+).
 
 ### Basic Alexandria Usage
 ```python
-from alexandria_v2 import AlexandriaStore, Patch
+from alexandria_mivp import AlexandriaStore, Patch
 
 store = AlexandriaStore()
 store.checkout("main")
@@ -98,7 +98,7 @@ print(store.status_report())
 
 ### MIVP Identity Creation
 ```python
-from mivp_impl import AgentIdentity
+from alexandria_mivp import AgentIdentity
 
 identity = AgentIdentity(
     name="EpistemicWilly",
@@ -195,7 +195,7 @@ These vectors enable:
 
 ```
 alexandria-mivp/
-├── src/
+├── alexandria_mivp/
 │   ├── alexandria_v2.py          # Alexandria Protocol core (Patch-DSL, store, nodes)
 │   ├── mivp_impl.py              # MIVP v2.1 (test-vector compliant, MH/PH/RH/CIH)
 │   ├── alexandria_mivp.py        # Integrated Alexandria+MIVP store + Extended Runtime Hash

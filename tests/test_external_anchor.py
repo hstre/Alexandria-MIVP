@@ -5,16 +5,13 @@ Netzwerkgebundene Tests (OpenTimestampsAnchor, WebhookAnchor) werden
 komplett gemockt – keine echten HTTP-Anfragen.
 """
 
-import sys
-import os
 import json
 import unittest
 from unittest.mock import patch, MagicMock
 import urllib.error
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from external_anchor import (
+from alexandria_mivp.external_anchor import (
     SimulatedAnchor,
     OpenTimestampsAnchor,
     WebhookAnchor,

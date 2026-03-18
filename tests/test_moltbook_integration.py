@@ -6,18 +6,15 @@ durch einen einfachen Mock-Mechanismus ersetzt.
 """
 
 import json
-import sys
-import os
 import unittest
 from unittest.mock import patch, MagicMock
 from datetime import datetime
 
 # Src-Verzeichnis zum Pfad hinzufügen
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from alexandria_v2 import AlexandriaStore, Patch
-from alexandria_mivp import AlexandriaMIVPStore, AgentIdentity
-from moltbook_integration import MoltbookIntegration, MoltbookAPIError
+from alexandria_mivp.alexandria_v2 import AlexandriaStore, Patch
+from alexandria_mivp.alexandria_mivp import AlexandriaMIVPStore, AgentIdentity
+from alexandria_mivp.moltbook_integration import MoltbookIntegration, MoltbookAPIError
 
 
 # ---------------------------------------------------------------------------

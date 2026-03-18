@@ -24,12 +24,8 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
-try:
-    from .alexandria_v2 import AlexandriaStore, Node
-    from .alexandria_mivp import AlexandriaMIVPStore, verify_cih_internal_consistency
-except ImportError:
-    from alexandria_v2 import AlexandriaStore, Node  # type: ignore[no-redef]
-    from alexandria_mivp import AlexandriaMIVPStore, verify_cih_internal_consistency  # type: ignore[no-redef]
+from .alexandria_v2 import AlexandriaStore, Node
+from .alexandria_mivp import AlexandriaMIVPStore, verify_cih_internal_consistency
 
 logger = logging.getLogger(__name__)
 

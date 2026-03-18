@@ -2,16 +2,13 @@
 Tests für Uncertainty Propagation über Claim-Graphen.
 """
 
-import sys
-import os
 import math
 import time
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from alexandria_v2 import Node, Patch, Uncertainty, AlexandriaStore
-from uncertainty_propagator import (
+from alexandria_mivp.alexandria_v2 import Node, Patch, Uncertainty, AlexandriaStore
+from alexandria_mivp.uncertainty_propagator import (
     UncertaintyPropagator,
     PropagationMode,
     PropagationResult,

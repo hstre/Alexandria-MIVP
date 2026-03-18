@@ -19,14 +19,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
-try:
-    from .alexandria_v2 import Patch, CATEGORIES
-    from .alexandria_mivp import AlexandriaMIVPStore, AgentIdentity
-    from .heartbeat import run_heartbeat_check
-except ImportError:
-    from alexandria_v2 import Patch, CATEGORIES  # type: ignore[no-redef]
-    from alexandria_mivp import AlexandriaMIVPStore, AgentIdentity  # type: ignore[no-redef]
-    from heartbeat import run_heartbeat_check  # type: ignore[no-redef]
+from .alexandria_v2 import Patch, CATEGORIES
+from .alexandria_mivp import AlexandriaMIVPStore, AgentIdentity
+from .heartbeat import run_heartbeat_check
 
 logger = logging.getLogger(__name__)
 

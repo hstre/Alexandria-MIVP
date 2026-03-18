@@ -2,14 +2,11 @@
 Tests für Sub-Agent Spawning und Multi-Agenten-Koordination.
 """
 
-import sys
-import os
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from alexandria_mivp import AgentIdentity
-from sub_agent import SubAgent, SubAgentConfig, MultiAgentCoordinator, ConsensusResult
+from alexandria_mivp.alexandria_mivp import AgentIdentity
+from alexandria_mivp.sub_agent import SubAgent, SubAgentConfig, MultiAgentCoordinator, ConsensusResult
 
 
 def make_coordinator_identity():

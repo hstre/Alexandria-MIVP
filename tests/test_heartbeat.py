@@ -2,16 +2,13 @@
 Tests für den Epistemic Heartbeat.
 """
 
-import sys
-import os
 import time
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from alexandria_v2 import AlexandriaStore, Patch
-from alexandria_mivp import AlexandriaMIVPStore, AgentIdentity
-from heartbeat import (
+from alexandria_mivp.alexandria_v2 import AlexandriaStore, Patch
+from alexandria_mivp.alexandria_mivp import AlexandriaMIVPStore, AgentIdentity
+from alexandria_mivp.heartbeat import (
     EpistemicHeartbeat,
     HeartbeatReport,
     run_heartbeat_check,

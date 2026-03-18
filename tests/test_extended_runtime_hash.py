@@ -5,13 +5,10 @@ Prüft die Integration der drei Schichten (Config, Environment, Attestation)
 in AgentIdentity.compute_rh() und get_identity_dict().
 """
 
-import sys
-import os
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from mivp_impl import (
+from alexandria_mivp.mivp_impl import (
     canonicalize_runtime_environment,
     runtime_environment_hash,
     canonicalize_runtime_attestation,
@@ -20,7 +17,7 @@ from mivp_impl import (
     runtime_hash,
     canonicalize_runtime,
 )
-from alexandria_mivp import AgentIdentity
+from alexandria_mivp.alexandria_mivp import AgentIdentity
 
 
 # ---------------------------------------------------------------------------

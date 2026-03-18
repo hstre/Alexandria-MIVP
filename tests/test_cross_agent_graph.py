@@ -1,12 +1,9 @@
 """Tests for CrossAgentGraph (cross_agent_graph.py)."""
-import sys
-import os
 import time
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from cross_agent_graph import (
+from alexandria_mivp.cross_agent_graph import (
     CrossAgentGraph, ClaimNode, GraphEdge, EdgeType,
     AgentContribution, EpistemicConflict,
 )

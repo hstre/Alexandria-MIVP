@@ -5,16 +5,13 @@ Prüft alle neuen Query-Methoden in AlexandriaSQLiteMIVPStore sowie
 die korrekte Persistenz von rh_extended_json.
 """
 
-import sys
-import os
 import time
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from alexandria_v2 import Patch, AuditError
-from alexandria_mivp import AgentIdentity
-from sqlite_store import AlexandriaSQLiteMIVPStore
+from alexandria_mivp.alexandria_v2 import Patch, AuditError
+from alexandria_mivp.alexandria_mivp import AgentIdentity
+from alexandria_mivp.sqlite_store import AlexandriaSQLiteMIVPStore
 
 
 # ---------------------------------------------------------------------------

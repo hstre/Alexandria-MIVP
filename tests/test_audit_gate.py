@@ -7,15 +7,12 @@ Prüft alle drei Validierungsschichten:
 3. Temporal Reasoning
 """
 
-import sys
-import os
 import time
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from alexandria_v2 import Patch, AuditError
-from audit_gate import (
+from alexandria_mivp.alexandria_v2 import Patch, AuditError
+from alexandria_mivp.audit_gate import (
     AuditGate,
     AuditGateConfig,
     AuditReport,

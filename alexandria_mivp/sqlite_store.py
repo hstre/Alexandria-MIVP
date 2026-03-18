@@ -9,11 +9,11 @@ from datetime import datetime
 from dataclasses import asdict
 import hashlib
 
-from alexandria_v2 import (
+from .alexandria_v2 import (
     AlexandriaStore, Patch, Node, Uncertainty, AuditError,
     audit_patch, sha256_json, clamp01, CATEGORIES, OPS
 )
-from alexandria_mivp import AgentIdentity, verify_cih_internal_consistency
+from .alexandria_mivp import AgentIdentity, verify_cih_internal_consistency
 
 
 class AlexandriaSQLiteStore(AlexandriaStore):

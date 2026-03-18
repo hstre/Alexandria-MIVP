@@ -11,12 +11,8 @@ import urllib.parse
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple
 
-try:
-    from .alexandria_v2 import Patch, CATEGORIES
-    from .alexandria_mivp import AlexandriaMIVPStore, AgentIdentity, verify_cih_internal_consistency
-except ImportError:
-    from alexandria_v2 import Patch, CATEGORIES  # type: ignore[no-redef]
-    from alexandria_mivp import AlexandriaMIVPStore, AgentIdentity, verify_cih_internal_consistency  # type: ignore[no-redef]
+from .alexandria_v2 import Patch, CATEGORIES
+from .alexandria_mivp import AlexandriaMIVPStore, AgentIdentity, verify_cih_internal_consistency
 
 
 class MoltbookAPIError(Exception):

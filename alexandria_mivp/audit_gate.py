@@ -23,10 +23,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple
 from enum import Enum
 
-try:
-    from alexandria_v2 import Patch, CATEGORIES, AuditError
-except ImportError:
-    from .alexandria_v2 import Patch, CATEGORIES, AuditError
+from .alexandria_v2 import Patch, CATEGORIES, AuditError
 
 
 # ---------------------------------------------------------------------------

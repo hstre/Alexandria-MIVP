@@ -1,13 +1,10 @@
 """Tests for performance.py (NodeCache, QueryCache, BatchProcessor, PerformanceMonitor)."""
-import sys
-import os
 import time
 import threading
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from performance import NodeCache, QueryCache, BatchProcessor, BatchReport, PerformanceMonitor
+from alexandria_mivp.performance import NodeCache, QueryCache, BatchProcessor, BatchReport, PerformanceMonitor
 
 
 # ---------------------------------------------------------------------------
