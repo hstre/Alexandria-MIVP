@@ -40,6 +40,20 @@ from .heartbeat import (
     run_heartbeat_check,
 )
 
+from .message_router import (
+    MessageRouter,
+    RouteResult,
+    MiddlewareContext,
+)
+
+from .sub_agent import (
+    SubAgent,
+    SubAgentConfig,
+    MultiAgentCoordinator,
+    EvaluationResult,
+    ConsensusResult,
+)
+
 __version__ = "0.1.0"
 __all__ = [
     # Alexandria Protocol
@@ -66,4 +80,16 @@ __all__ = [
     "EpistemicHeartbeat",
     "HeartbeatReport",
     "run_heartbeat_check",
+
+    # Message Router
+    "MessageRouter",
+    "RouteResult",
+    "MiddlewareContext",
+
+    # Sub-Agent / Multi-Agent
+    "SubAgent",
+    "SubAgentConfig",
+    "MultiAgentCoordinator",
+    "EvaluationResult",
+    "ConsensusResult",
 ]
