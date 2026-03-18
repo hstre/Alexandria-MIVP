@@ -32,6 +32,18 @@ from mivp_impl import (
     runtime_hash, canonicalize_runtime, composite_instance_hash
 )
 
+try:
+    from external_anchor import (
+        BaseExternalAnchor,
+        SimulatedAnchor,
+        OpenTimestampsAnchor,
+        WebhookAnchor,
+        MultiAnchor,
+    )
+    _NEW_ANCHOR_AVAILABLE = True
+except ImportError:
+    _NEW_ANCHOR_AVAILABLE = False
+
 # ----------------------------- Digital Signer -----------------------------
 
 class DigitalSigner:
@@ -484,7 +496,14 @@ class AlexandriaMIVPStore(AlexandriaStore):
     Optional external anchoring for global consistency.
     """
     
-    def __init__(self, agent_identity: AgentIdentity, external_anchor: Optional[ExternalAnchor] = None):
+    def __init__(self, agent_identity: AgentIdentity, external_anchor=None):
+        """
+        Args:
+            agent_identity: MIVP-Identität des Agenten.
+            external_anchor: Optionaler Anchor-Dienst. Akzeptiert sowohl das
+                             originale ExternalAnchor als auch alle Klassen aus
+                             external_anchor.py (BaseExternalAnchor-Unterklassen).
+        """
         super().__init__()
         self.agent_identity = agent_identity
         self.external_anchor = external_anchor

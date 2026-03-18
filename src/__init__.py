@@ -29,6 +29,17 @@ from .sqlite_store import (
     migrate_memory_to_sqlite
 )
 
+from .external_anchor import (
+    BaseExternalAnchor,
+    SimulatedAnchor,
+    OpenTimestampsAnchor,
+    WebhookAnchor,
+    MultiAnchor,
+    AnchorError,
+    AnchorProof,
+    ExternalAnchor,
+)
+
 from .moltbook_integration import (
     MoltbookIntegration,
     MoltbookAPIError,
@@ -71,6 +82,16 @@ __all__ = [
     # Integration
     "AlexandriaMIVPStore",
     "verify_cih_internal_consistency",
+
+    # External Anchor
+    "BaseExternalAnchor",
+    "SimulatedAnchor",
+    "OpenTimestampsAnchor",
+    "WebhookAnchor",
+    "MultiAnchor",
+    "AnchorError",
+    "AnchorProof",
+    "ExternalAnchor",
 
     # Moltbook
     "MoltbookIntegration",
