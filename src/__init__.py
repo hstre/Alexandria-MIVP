@@ -78,6 +78,13 @@ from .audit_gate import (
     make_strict_empirical_gate,
 )
 
+from .uncertainty_propagator import (
+    UncertaintyPropagator,
+    PropagationMode,
+    PropagationResult,
+    PropagationReport,
+)
+
 __version__ = "0.1.0"
 __all__ = [
     # Alexandria Protocol
@@ -139,4 +146,10 @@ __all__ = [
     "Severity",
     "make_default_gate",
     "make_strict_empirical_gate",
+
+    # Uncertainty Propagation
+    "UncertaintyPropagator",
+    "PropagationMode",
+    "PropagationResult",
+    "PropagationReport",
 ]
