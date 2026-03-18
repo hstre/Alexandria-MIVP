@@ -196,20 +196,41 @@ These vectors enable:
 ```
 alexandria-mivp/
 ├── src/
-│   ├── alexandria_v2.py          # Alexandria Protocol implementation
-│   ├── mivp_impl.py              # MIVP v2.1 implementation (test-vector compliant)
-│   └── alexandria_mivp.py        # Integrated Alexandria+MIVP store
+│   ├── alexandria_v2.py          # Alexandria Protocol core (Patch-DSL, store, nodes)
+│   ├── mivp_impl.py              # MIVP v2.1 (test-vector compliant, MH/PH/RH/CIH)
+│   ├── alexandria_mivp.py        # Integrated Alexandria+MIVP store + Extended Runtime Hash
+│   ├── sqlite_store.py           # SQLite persistence with 10 identity query methods
+│   ├── audit_gate.py             # Extended Audit Gate (semantic, source, temporal checks)
+│   ├── uncertainty_propagator.py # Uncertainty propagation across claim DAGs
+│   ├── cross_agent_graph.py      # Cross-agent epistemic graphs (multi-agent scenarios)
+│   ├── performance.py            # NodeCache, QueryCache, BatchProcessor, PerformanceMonitor
+│   ├── distributed_store.py      # Distributed backends (S3, IPFS, Ledger, Multi)
+│   ├── formal_verification.py    # Formal verification framework (invariants, properties)
+│   ├── sub_agent.py              # SubAgent spawning and MultiAgentCoordinator
+│   ├── heartbeat.py              # Epistemic Heartbeat (periodic integrity checks)
+│   ├── message_router.py         # Message routing between agents
+│   ├── external_anchor.py        # External anchoring (OpenTimestamps, Webhook)
+│   └── moltbook_integration.py   # Moltbook API integration
 ├── examples/                     # Usage examples
 │   ├── basic_usage.py
 │   ├── agent_identity.py
 │   └── integration_demo.py
-├── tests/                        # Compliance tests
-│   ├── test_mivp_vectors.py
+├── tests/                        # 522 tests (all passing)
+│   ├── test_mivp_vectors.py      # MIVP v2.1 Appendix G compliance
 │   ├── test_alexandria.py
-│   └── test_integration.py
+│   ├── test_integration.py
+│   ├── test_extended_runtime_hash.py
+│   ├── test_sqlite_identity_queries.py
+│   ├── test_audit_gate.py
+│   ├── test_uncertainty_propagator.py
+│   ├── test_cross_agent_graph.py
+│   ├── test_performance.py
+│   ├── test_distributed_store.py
+│   └── test_formal_verification.py
 ├── docs/                         # Documentation
 │   ├── architecture.md
 │   ├── api_reference.md
+│   ├── getting_started.md
 │   └── use_cases.md
 └── README.md
 ```
@@ -278,20 +299,23 @@ The following table analyzes potential attacks and how the system addresses them
 ### ✅ Implemented
 - Alexandria Protocol core (v2, based on reference implementation)
 - MIVP v2.1 with all test vectors (Appendix G compliant)
-- Integrated Alexandria+MIVP store
-- Basic examples and demos
+- Integrated Alexandria+MIVP store with full MIVP identity injection
+- SQLite persistence backend with 10 identity-query methods
+- Extended Runtime Hash (three-layer: config / environment / attestation)
+- Extended Audit Gate with semantic, source-verification and temporal checks
+- Uncertainty Propagation across claim graphs (DAG, 5 combination modes)
+- Cross-Agent Epistemic Graphs (5 edge types, BFS path-finding, conflict detection)
+- Performance layer: LRU NodeCache, TTL QueryCache, parallel BatchProcessor, PerformanceMonitor
+- Distributed Storage Backend: InMemory, S3, IPFS, DistributedLedger, MultiBackend
+- Formal Verification Framework: invariants, properties, custom checks, VerificationReport
+- Multi-agent coordination (SubAgent, MultiAgentCoordinator, consensus building)
+- Epistemic Heartbeat (periodic integrity and consistency monitoring)
+- Message routing (MessageRouter, subscription-based claim delivery)
+- External anchoring (OpenTimestamps, Webhook, multi-anchor redundancy)
+- Moltbook API integration (bidirectional sync)
 
 ### 🚧 In Progress
 - OpenClaw integration
-- Moltbook API integration
-- Performance optimizations
-- Additional audit gate rules
-
-### 📋 Planned
-- Distributed storage backend
-- Advanced uncertainty propagation
-- Cross-agent epistemic graphs
-- Formal verification proofs
 
 ## Contributing
 

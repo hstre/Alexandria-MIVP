@@ -155,25 +155,120 @@ Main Branch → Controversial Patch → Branch Creation → Alternative Interpre
 - **Branches**: Share common prefix, efficient storage
 - **Hashes**: Fixed-size (32 bytes each)
 
+## Advanced Components
+
+### Audit Gate (Three-Layer Validation)
+```
+┌────────────────────────────────────────────────────┐
+│                  AuditGate                         │
+├──────────────────┬─────────────────┬───────────────┤
+│ Semantic Layer   │ Source Layer    │ Temporal Layer│
+│ SEM001–009       │ SRC001–006      │ TMP001–008    │
+│                  │                 │               │
+│ • Length checks  │ • Presence      │ • Plausibility│
+│ • Placeholders   │ • URL format    │ • Monotonicity│
+│ • Repetition     │ • Duplicates    │ • Scope       │
+│ • Assumptions    │ • Count range   │ • Anachronism │
+└──────────────────┴─────────────────┴───────────────┘
+         │
+AuditReport → violations (ERROR|WARNING), raise_if_failed()
+```
+
+### Uncertainty Propagation
+```
+Claim DAG (directed acyclic graph)
+  A → B → D
+  C → B
+       ↓
+UncertaintyPropagator (Kahn topological sort)
+  • Modes: SUM_IN_QUADRATURE, WEIGHTED_MEAN, MAX, MEAN, LINEAR
+  • Decay: reduces contribution of distant sources
+  • Cycle detection (DFS): cycle nodes get combined_sigma=inf
+       ↓
+PropagationReport → per-node combined_sigma, depth, contributing_nodes
+```
+
+### Cross-Agent Epistemic Graphs
+```
+Agent A ──────────────────────────── Agent B
+  c1 (EMPIRICAL, σ=0.1)               c3 (EMPIRICAL, σ=0.15)
+  c2 (EMPIRICAL, σ=0.2)               c4 (NORMATIVE, σ=0.3)
+       │  SUPPORTS ────────────────────►  │
+       │  CHALLENGES ◄──────────────────  │
+       └──────────────────────────────────┘
+                      ↓
+            CrossAgentGraph
+            • BFS path-finding
+            • Conflict detection (direct_challenge, cross_agent_challenge)
+            • agent_contributions()
+            • to_dict() / from_dict()
+```
+
+### Performance Layer
+```
+AlexandriaMIVPStore
+       │
+   NodeCache (LRU)           QueryCache (TTL)
+   key: (branch, patch_id)   key: SHA256(args)
+   thread-safe               thread-safe
+       │
+   BatchProcessor            PerformanceMonitor
+   ThreadPoolExecutor         context-manager timing
+   parallel / sequential      per-operation stats
+```
+
+### Distributed Storage Layer
+```
+DistributedAlexandriaStore
+       │
+DistributedBackend (abstract)
+   ├── InMemoryBackend          (dict, thread-safe, tests)
+   ├── S3Backend                (boto3, mock mode available)
+   ├── IPFSBackend              (content-addressed, mock mode)
+   ├── DistributedLedgerBackend (append-only, cryptographic chain)
+   └── MultiBackend             (redundancy: write-all, read-first)
+```
+
+### Formal Verification Framework
+```
+EpistemicVerifier(store)
+       │
+Built-in Invariants          Built-in Properties
+• no_dangling_references     • chain_integrity
+• monotonic_timestamps       • unique_patch_ids
+• valid_operations           • sigma_in_range
+• valid_categories           • content_not_empty
+                             • no_deprecated_without_add
+                             • assumptions_for_speculative
+       │
+Custom Properties (add_property / @verifier.property decorator)
+       │
+VerificationReport
+• passed / failed / errors / skipped
+• is_fully_verified
+• tag-based filtering, skip list
+• per-result timing (duration_ms)
+```
+
 ## Extension Points
 
 ### Pluggable Storage
-- **Local Filesystem**: Default (JSON files)
-- **Database**: SQL/NoSQL backends
-- **Distributed**: IPFS, S3, distributed ledgers
-- **In-Memory**: For testing/development
+- **In-Memory**: For testing/development (`InMemoryBackend`)
+- **SQLite**: Persistent local storage (`AlexandriaSQLiteMIVPStore`)
+- **S3**: AWS / MinIO object storage (`S3Backend`)
+- **IPFS**: Content-addressed distributed storage (`IPFSBackend`)
+- **Ledger**: Append-only cryptographic log (`DistributedLedgerBackend`)
+- **Multi**: Redundant multi-backend layer (`MultiBackend`)
 
-### Additional Audit Rules
-- **Semantic Validation**: LLM-based content analysis
-- **Source Verification**: Link crawling, fact-checking
-- **Consistency Checking**: Logical contradiction detection
-- **Temporal Reasoning**: Claim expiration, staleness detection
+### Audit Gate Customization
+- Register custom thresholds via `AuditGateConfig`
+- Three validation layers (semantic, source, temporal) are independently composable
+- Factory functions: `make_default_gate()`, `make_strict_empirical_gate()`
 
 ### Integration Interfaces
 - **REST API**: HTTP endpoints for remote access
-- **gRPC**: High-performance RPC interface
 - **CLI**: Command-line tools for manual operation
-- **GUI**: Visual epistemic graph exploration
+- **GUI**: Visual epistemic graph exploration (CrossAgentGraph export)
 
 ## Use Case Scenarios
 
